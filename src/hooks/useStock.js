@@ -34,6 +34,37 @@ export function useAllStockMovements() {
   });
 }
 
+export function useLogBatchStockMovements() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({ components, type, quantity }) => {
+      const rows = components.map(c => ({
+        component_id: c.id,
+        type,
+        quantity,
+        notes: null,
+        created_by: user.id,
+      }));
+      const { error: moveError } = await supabase.from('stock_movements').insert(rows);
+      if (moveError) throw moveError;
+      if (type !== 'received') {
+        const delta = type === 'out' ? -quantity : quantity;
+        await Promise.all(components.map(c =>
+          supabase
+            .from('implant_components')
+            .update({ stock_qty: Math.max(0, c.stock_qty + delta) })
+            .eq('id', c.id)
+        ));
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stock_movements'] });
+      qc.invalidateQueries({ queryKey: ['components'] });
+    },
+  });
+}
+
 export function useLogStockMovement() {
   const qc = useQueryClient();
   const { user } = useAuth();

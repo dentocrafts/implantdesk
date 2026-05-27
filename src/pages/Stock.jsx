@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { ArrowUpRight, Undo2, PackagePlus, SlidersHorizontal, History } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ArrowUpRight, Undo2, PackagePlus, SlidersHorizontal, History, Download, X } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -21,7 +22,7 @@ import DentalPlaceholder from '@/components/common/DentalPlaceholder';
 import CopyableCode from '@/components/common/CopyableCode';
 import EmptyState from '@/components/common/EmptyState';
 import { useAllComponents } from '@/hooks/useComponents';
-import { useAllStockMovements, useLogStockMovement } from '@/hooks/useStock';
+import { useAllStockMovements, useLogStockMovement, useLogBatchStockMovements } from '@/hooks/useStock';
 import { formatCurrency, getStockStatus, SYSTEM_COLORS, cn } from '@/lib/utils';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
@@ -134,25 +135,11 @@ function StockDialog({ component, type, open, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-3 pt-1">
           <div className="space-y-1.5">
             <Label htmlFor="qty">Quantity *</Label>
-            <Input
-              id="qty"
-              type="number"
-              min={1}
-              value={qty}
-              onChange={e => setQty(e.target.value)}
-              required
-              autoFocus
-            />
+            <Input id="qty" type="number" min={1} value={qty} onChange={e => setQty(e.target.value)} required autoFocus />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="notes">Notes (optional)</Label>
-            <Textarea
-              id="notes"
-              placeholder={cfg.notesPlaceholder}
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={2}
-            />
+            <Textarea id="notes" placeholder={cfg.notesPlaceholder} value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
@@ -176,16 +163,12 @@ function ComponentDetailModal({ component, open, onClose, onAction, isAdmin }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md p-0 overflow-hidden">
-        {/* Image */}
         <div className="w-full h-44 bg-muted overflow-hidden">
           {component.image_url
             ? <img src={component.image_url} alt={component.name} className="w-full h-full object-cover" />
-            : <DentalPlaceholder />
-          }
+            : <DentalPlaceholder />}
         </div>
-
         <div className="p-5 space-y-4">
-          {/* Name + badges */}
           <div>
             <h2 className="text-lg font-bold leading-tight">{component.name}</h2>
             <div className="flex flex-wrap items-center gap-2 mt-2">
@@ -195,8 +178,6 @@ function ComponentDetailModal({ component, open, onClose, onAction, isAdmin }) {
               <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
             </div>
           </div>
-
-          {/* Stats row */}
           <div className={cn('divide-x divide-border rounded-lg border border-border text-center', settings.showPricing ? 'grid grid-cols-3' : 'grid grid-cols-2')}>
             {settings.showPricing && (
               <div className="px-3 py-2.5">
@@ -213,32 +194,17 @@ function ComponentDetailModal({ component, open, onClose, onAction, isAdmin }) {
               <CopyableCode code={component.component_code} className="font-semibold" />
             </div>
           </div>
-
-          {/* Action buttons — admin only */}
           {isAdmin ? (
             <div className="grid grid-cols-3 gap-2 pt-1">
-              <Button
-                variant="outline"
-                className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.out.btnClass)}
-                disabled={component.stock_qty === 0}
-                onClick={() => onAction('out')}
-              >
+              <Button variant="outline" className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.out.btnClass)} disabled={component.stock_qty === 0} onClick={() => onAction('out')}>
                 <ArrowUpRight className="h-4 w-4" />
                 <span className="text-xs font-semibold">Outward</span>
               </Button>
-              <Button
-                variant="outline"
-                className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.in.btnClass)}
-                onClick={() => onAction('in')}
-              >
+              <Button variant="outline" className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.in.btnClass)} onClick={() => onAction('in')}>
                 <Undo2 className="h-4 w-4" />
                 <span className="text-xs font-semibold">Inward</span>
               </Button>
-              <Button
-                variant="outline"
-                className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.received.btnClass)}
-                onClick={() => onAction('received')}
-              >
+              <Button variant="outline" className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.received.btnClass)} onClick={() => onAction('received')}>
                 <PackagePlus className="h-4 w-4" />
                 <span className="text-xs font-semibold">Received</span>
               </Button>
@@ -269,19 +235,151 @@ function MovementBadge({ type }) {
 export default function Stock() {
   const { data: components, isLoading: loadingComponents } = useAllComponents();
   const { data: movements, isLoading: loadingMovements } = useAllStockMovements();
+  const logBatch = useLogBatchStockMovements();
   const { isAdmin } = useAuth();
   const { canLogStock, canViewHistory } = usePermissions();
-  const [search, setSearch] = useState('');
-  const [dialog, setDialog] = useState(null); // { component, type }
-  const [selectedComponent, setSelectedComponent] = useState(null);
-  const [activeTab, setActiveTab] = useState('inventory');
 
-  const filtered = components?.filter(c =>
+  const [search,            setSearch]            = useState('');
+  const [dialog,            setDialog]            = useState(null);
+  const [selectedComponent, setSelectedComponent] = useState(null);
+  const [activeTab,         setActiveTab]         = useState('inventory');
+  const [selected,          setSelected]          = useState(new Set());
+  const [batchQty,          setBatchQty]          = useState(1);
+
+  // ── Drag-select + auto-scroll refs ──────────────────────────────────
+  const isDragging           = useRef(false);
+  const dragStartIndex       = useRef(null);
+  const dragStartValue       = useRef(true);
+  const dragOriginalSelected = useRef(null);
+  const mouseXRef            = useRef(0);
+  const mouseYRef            = useRef(0);
+  const scrollRafRef         = useRef(null);
+  const filteredRef          = useRef([]);
+
+  const filtered = (components ?? []).filter(c =>
     !search ||
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.system.toLowerCase().includes(search.toLowerCase()) ||
     c.component_code?.toLowerCase().includes(search.toLowerCase())
-  ) || [];
+  );
+
+  useEffect(() => { filteredRef.current = filtered; });
+
+  // ── Selection ────────────────────────────────────────────────────────
+  const visibleSelected = filtered.filter(c => selected.has(c.id));
+  const selectedCount   = visibleSelected.length;
+  const allSelected     = filtered.length > 0 && selectedCount === filtered.length;
+  const someSelected    = selectedCount > 0 && !allSelected;
+
+  function toggleAll()       { setSelected(allSelected ? new Set() : new Set(filtered.map(c => c.id))); }
+  function clearSelection()  { setSelected(new Set()); }
+
+  function applyDragAt(idx) {
+    if (!isDragging.current || dragStartIndex.current === null) return;
+    const f    = filteredRef.current;
+    const orig = dragOriginalSelected.current;
+    if (!orig) return;
+    const lo = Math.min(dragStartIndex.current, idx);
+    const hi = Math.max(dragStartIndex.current, idx);
+    setSelected(() => {
+      const next = new Set(orig);
+      for (let i = lo; i <= hi; i++) {
+        if (!f[i]) continue;
+        dragStartValue.current ? next.add(f[i].id) : next.delete(f[i].id);
+      }
+      return next;
+    });
+  }
+
+  // ── Global mouse listeners ──────────────────────────────────────────
+  useEffect(() => {
+    const ZONE = 80, MAX_SPEED = 14;
+    function speed(y) {
+      if (y < ZONE) return -Math.ceil(MAX_SPEED * (1 - y / ZONE));
+      const d = window.innerHeight - y;
+      if (d < ZONE) return Math.ceil(MAX_SPEED * (1 - d / ZONE));
+      return 0;
+    }
+    function rowAt(x, y) {
+      const el = document.elementFromPoint(x, y);
+      const row = el?.closest('[data-row-index]');
+      return row ? Number(row.dataset.rowIndex) : null;
+    }
+    function frame() {
+      if (!isDragging.current) { scrollRafRef.current = null; return; }
+      const s = speed(mouseYRef.current);
+      if (s !== 0) {
+        window.scrollBy(0, s);
+        const idx = rowAt(mouseXRef.current, mouseYRef.current);
+        if (idx !== null) applyDragAt(idx);
+      }
+      scrollRafRef.current = requestAnimationFrame(frame);
+    }
+    function onMove(e) {
+      mouseXRef.current = e.clientX; mouseYRef.current = e.clientY;
+      if (isDragging.current && !scrollRafRef.current)
+        scrollRafRef.current = requestAnimationFrame(frame);
+    }
+    function onUp() {
+      isDragging.current = false;
+      if (scrollRafRef.current) { cancelAnimationFrame(scrollRafRef.current); scrollRafRef.current = null; }
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, []);
+
+  function handleCheckboxMouseDown(e, idx) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const id = filtered[idx].id;
+    dragOriginalSelected.current = new Set(selected);
+    isDragging.current     = true;
+    dragStartIndex.current = idx;
+    dragStartValue.current = !selected.has(id);
+    applyDragAt(idx);
+  }
+
+  // ── Batch actions ────────────────────────────────────────────────────
+  async function handleBatchOutward() {
+    const qty = Number(batchQty);
+    if (!qty || qty < 1) return;
+    if (!confirm(`Log Outward ×${qty} for ${selectedCount} component${selectedCount > 1 ? 's' : ''}?`)) return;
+    await logBatch.mutateAsync({ components: visibleSelected, type: 'out', quantity: qty });
+    clearSelection();
+    toast.success(`Outward ×${qty} logged for ${selectedCount} component${selectedCount > 1 ? 's' : ''}`);
+  }
+
+  async function handleBatchReceived() {
+    const qty = Number(batchQty);
+    if (!qty || qty < 1) return;
+    if (!confirm(`Log Received ×${qty} for ${selectedCount} component${selectedCount > 1 ? 's' : ''}?`)) return;
+    await logBatch.mutateAsync({ components: visibleSelected, type: 'received', quantity: qty });
+    clearSelection();
+    toast.success(`Received ×${qty} logged for ${selectedCount} component${selectedCount > 1 ? 's' : ''}`);
+  }
+
+  function handleBatchExport() {
+    const headers = ['Name', 'System', 'Code', 'Stock', 'Status'];
+    const rows = visibleSelected.map(c => [
+      `"${(c.name ?? '').replace(/"/g, '""')}"`,
+      c.system ?? '',
+      c.component_code ?? '',
+      c.stock_qty ?? 0,
+      c.is_active ? 'Active' : 'Hidden',
+    ]);
+    const csv  = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `implantdesk-stock-${Date.now()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${selectedCount} component${selectedCount > 1 ? 's' : ''} exported`);
+  }
 
   return (
     <Layout>
@@ -293,22 +391,12 @@ export default function Stock() {
             <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">Outward/Inward affect lab stock · Received is an order log only</p>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Button
-              variant={activeTab === 'inventory' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveTab('inventory')}
-              className="gap-1.5"
-            >
+            <Button variant={activeTab === 'inventory' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('inventory')} className="gap-1.5">
               <SlidersHorizontal className="h-3.5 w-3.5" />
               Inventory
             </Button>
             {canViewHistory && (
-              <Button
-                variant={activeTab === 'history' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setActiveTab('history')}
-                className="gap-1.5"
-              >
+              <Button variant={activeTab === 'history' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('history')} className="gap-1.5">
                 <History className="h-3.5 w-3.5" />
                 History
               </Button>
@@ -339,10 +427,59 @@ export default function Stock() {
               onChange={e => setSearch(e.target.value)}
               className="max-w-sm"
             />
+
+            {/* Batch action bar */}
+            {selectedCount > 0 && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
+                <div className="flex items-center gap-1.5 mr-auto">
+                  <span className="text-sm font-medium">
+                    {selectedCount} component{selectedCount > 1 ? 's' : ''} selected
+                  </span>
+                  <button onClick={clearSelection} className="rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors" title="Clear selection">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {canLogStock && (
+                  <>
+                    {/* Quantity input */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">Qty:</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={batchQty}
+                        onChange={e => setBatchQty(Math.max(1, Number(e.target.value)))}
+                        className="h-8 w-16 text-xs text-center"
+                      />
+                    </div>
+                    <Button variant="outline" size="sm" className={cn('gap-1.5 h-8', MOVEMENT_TYPES.out.btnClass)} onClick={handleBatchOutward} disabled={logBatch.isPending}>
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                      Outward
+                    </Button>
+                    <Button variant="outline" size="sm" className={cn('gap-1.5 h-8', MOVEMENT_TYPES.received.btnClass)} onClick={handleBatchReceived} disabled={logBatch.isPending}>
+                      <PackagePlus className="h-3.5 w-3.5" />
+                      Received
+                    </Button>
+                  </>
+                )}
+                <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchExport} disabled={logBatch.isPending}>
+                  <Download className="h-3.5 w-3.5" />
+                  Export CSV
+                </Button>
+              </div>
+            )}
+
             <div className="rounded-lg border border-border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10 pr-0">
+                      <Checkbox
+                        checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                        onCheckedChange={toggleAll}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead>Component</TableHead>
                     <TableHead className="hidden md:table-cell">System</TableHead>
                     <TableHead className="hidden sm:table-cell">Code</TableHead>
@@ -352,97 +489,95 @@ export default function Stock() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loadingComponents ? (
-                    Array.from({ length: 6 }).map((_, i) => (
-                      <TableRow key={i}>
-                        {Array.from({ length: 6 }).map((_, j) => (
-                          <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                        ))}
-                      </TableRow>
-                    ))
-                  ) : filtered.map(c => {
-                    const stock = getStockStatus(c.stock_qty);
-                    const sysColor = SYSTEM_COLORS[c.system] || '';
-                    return (
-                      <TableRow
-                        key={c.id}
-                        className="cursor-pointer"
-                        onClick={() => setSelectedComponent(c)}
-                      >
-                        <TableCell className="font-medium text-sm max-w-[180px]">
-                          <TooltipProvider delayDuration={300}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="line-clamp-1 block">{c.name}</span>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs text-xs">
-                                {c.name}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <div className="flex flex-col gap-1">
-                            <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold w-fit', sysColor)}>
-                              {c.system}
-                            </span>
-                            {c.category === 'screw' && (
-                              <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold w-fit bg-violet-50 text-violet-700 border-violet-200">
-                                Screw
-                              </span>
+                  {loadingComponents
+                    ? Array.from({ length: 6 }).map((_, i) => (
+                        <TableRow key={i}>
+                          {Array.from({ length: 7 }).map((_, j) => (
+                            <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    : filtered.map((c, idx) => {
+                        const stock    = getStockStatus(c.stock_qty);
+                        const sysColor = SYSTEM_COLORS[c.system] || '';
+                        const isChecked = selected.has(c.id);
+                        return (
+                          <TableRow
+                            key={c.id}
+                            data-row-index={idx}
+                            className={cn('cursor-pointer select-none', isChecked && 'bg-muted/40')}
+                            onClick={() => setSelectedComponent(c)}
+                            onMouseEnter={() => {
+                              if (isDragging.current && dragStartIndex.current !== null) applyDragAt(idx);
+                            }}
+                          >
+                            {/* Checkbox cell — stops row click, starts drag */}
+                            <TableCell
+                              className="w-10 pr-0"
+                              onClick={e => e.stopPropagation()}
+                              onMouseDown={e => handleCheckboxMouseDown(e, idx)}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                className="pointer-events-none"
+                                aria-label={`Select ${c.name}`}
+                              />
+                            </TableCell>
+
+                            <TableCell className="font-medium text-sm max-w-[180px]">
+                              <TooltipProvider delayDuration={300}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="line-clamp-1 block">{c.name}</span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top" className="max-w-xs text-xs">{c.name}</TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell">
+                              <div className="flex flex-col gap-1">
+                                <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold w-fit', sysColor)}>
+                                  {c.system}
+                                </span>
+                                {c.category === 'screw' && (
+                                  <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold w-fit bg-violet-50 text-violet-700 border-violet-200">
+                                    Screw
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <CopyableCode code={c.component_code} />
+                            </TableCell>
+                            <TableCell>
+                              <span className="font-bold text-lg">{c.stock_qty}</span>
+                              <span className="text-muted-foreground text-xs ml-1">units</span>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
+                            </TableCell>
+                            {canLogStock && (
+                              <TableCell onClick={e => e.stopPropagation()}>
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button size="sm" variant="outline" className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.out.btnClass)} onClick={() => setDialog({ component: c, type: 'out' })} disabled={c.stock_qty === 0} title="Outward">
+                                    <ArrowUpRight className="h-3.5 w-3.5" />
+                                    Outward
+                                  </Button>
+                                  <Button size="sm" variant="outline" className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.in.btnClass)} onClick={() => setDialog({ component: c, type: 'in' })} title="Inward">
+                                    <Undo2 className="h-3.5 w-3.5" />
+                                    Inward
+                                  </Button>
+                                  <Button size="sm" variant="outline" className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.received.btnClass)} onClick={() => setDialog({ component: c, type: 'received' })} title="Received">
+                                    <PackagePlus className="h-3.5 w-3.5" />
+                                    Received
+                                  </Button>
+                                </div>
+                              </TableCell>
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <CopyableCode code={c.component_code} />
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-bold text-lg">{c.stock_qty}</span>
-                          <span className="text-muted-foreground text-xs ml-1">units</span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
-                        </TableCell>
-                        {canLogStock && (
-                          <TableCell onClick={e => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.out.btnClass)}
-                                onClick={() => setDialog({ component: c, type: 'out' })}
-                                disabled={c.stock_qty === 0}
-                                title="Outward — sent to doctor"
-                              >
-                                <ArrowUpRight className="h-3.5 w-3.5" />
-                                Outward
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.in.btnClass)}
-                                onClick={() => setDialog({ component: c, type: 'in' })}
-                                title="Inward — returned by doctor"
-                              >
-                                <Undo2 className="h-3.5 w-3.5" />
-                                Inward
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.received.btnClass)}
-                                onClick={() => setDialog({ component: c, type: 'received' })}
-                                title="Received — new stock from order"
-                              >
-                                <PackagePlus className="h-3.5 w-3.5" />
-                                Received
-                              </Button>
-                            </div>
-                          </TableCell>
-                        )}
-                      </TableRow>
-                    );
-                  })}
+                          </TableRow>
+                        );
+                      })
+                  }
                 </TableBody>
               </Table>
               {!loadingComponents && filtered.length === 0 && (
@@ -467,91 +602,70 @@ export default function Stock() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {loadingMovements ? (
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 6 }).map((_, j) => (
-                        <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : movements?.map(m => {
-                  const cfg = MOVEMENT_TYPES[m.type] || MOVEMENT_TYPES.out;
-                  return (
-                    <TableRow key={m.id}>
-                      <TableCell>
-                        <MovementBadge type={m.type} />
-                      </TableCell>
-                      <TableCell className="text-sm max-w-[180px]">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="line-clamp-1">{m.implant_components?.name || '—'}</span>
-                          {m.implant_components?.category === 'screw' && (
-                            <span className="inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold bg-violet-50 text-violet-700 border-violet-200">
-                              Screw
+                {loadingMovements
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <TableRow key={i}>
+                        {Array.from({ length: 6 }).map((_, j) => (
+                          <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                        ))}
+                      </TableRow>
+                    ))
+                  : movements?.map(m => {
+                      const cfg = MOVEMENT_TYPES[m.type] || MOVEMENT_TYPES.out;
+                      return (
+                        <TableRow key={m.id}>
+                          <TableCell><MovementBadge type={m.type} /></TableCell>
+                          <TableCell className="text-sm max-w-[180px]">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="line-clamp-1">{m.implant_components?.name || '—'}</span>
+                              {m.implant_components?.category === 'screw' && (
+                                <span className="inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold bg-violet-50 text-violet-700 border-violet-200">Screw</span>
+                              )}
+                            </div>
+                            <CopyableCode code={m.implant_components?.component_code} />
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {m.implant_components?.system && (
+                              <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', SYSTEM_COLORS[m.implant_components.system] || '')}>
+                                {m.implant_components.system}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <span className={cn('font-bold text-sm', cfg.color)}>
+                              {cfg.noStockImpact ? m.quantity : `${cfg.sign}${m.quantity}`}
                             </span>
-                          )}
-                        </div>
-                        <CopyableCode code={m.implant_components?.component_code} />
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {m.implant_components?.system && (
-                          <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', SYSTEM_COLORS[m.implant_components.system] || '')}>
-                            {m.implant_components.system}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <span className={cn('font-bold text-sm', cfg.color)}>
-                          {cfg.noStockImpact
-                            ? m.quantity
-                            : `${cfg.sign}${m.quantity}`}
-                        </span>
-                        {cfg.noStockImpact && (
-                          <span className="text-xs text-muted-foreground ml-1">log</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm text-muted-foreground max-w-[200px]">
-                        <span className="line-clamp-1">{m.notes || '—'}</span>
-                      </TableCell>
-                      <TableCell className="hidden lg:table-cell text-xs text-muted-foreground whitespace-nowrap">
-                        {format(new Date(m.created_at), 'dd MMM yyyy, h:mm a')}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                            {cfg.noStockImpact && <span className="text-xs text-muted-foreground ml-1">log</span>}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-sm text-muted-foreground max-w-[200px]">
+                            <span className="line-clamp-1">{m.notes || '—'}</span>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell text-xs text-muted-foreground whitespace-nowrap">
+                            {format(new Date(m.created_at), 'dd MMM yyyy, h:mm a')}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                }
               </TableBody>
             </Table>
             {!loadingMovements && !movements?.length && (
-              <EmptyState
-                icon={History}
-                title="No movements yet"
-                description="Use the Inventory tab to log outward, inward, and received events."
-              />
+              <EmptyState icon={History} title="No movements yet" description="Use the Inventory tab to log outward, inward, and received events." />
             )}
           </div>
         )}
       </div>
 
-      {/* Component detail modal */}
       <ComponentDetailModal
         component={selectedComponent}
         open={!!selectedComponent}
         onClose={() => setSelectedComponent(null)}
         isAdmin={canLogStock}
-        onAction={(type) => {
-          setDialog({ component: selectedComponent, type });
-          setSelectedComponent(null);
-        }}
+        onAction={(type) => { setDialog({ component: selectedComponent, type }); setSelectedComponent(null); }}
       />
 
-      {/* Movement form dialog */}
       {dialog && (
-        <StockDialog
-          component={dialog.component}
-          type={dialog.type}
-          open={!!dialog}
-          onClose={() => setDialog(null)}
-        />
+        <StockDialog component={dialog.component} type={dialog.type} open={!!dialog} onClose={() => setDialog(null)} />
       )}
     </Layout>
   );

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Minus, Printer, Search, FileText, RotateCcw, LayoutGrid, ClipboardList, X, MessageSquare, Check } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Plus, Minus, Printer, Search, FileText, RotateCcw, LayoutGrid, ClipboardList, X, MessageSquare, Check, Trash2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 import DentalPlaceholder from '@/components/common/DentalPlaceholder';
 import CopyableCode from '@/components/common/CopyableCode';
 import { useComponents } from '@/hooks/useComponents';
@@ -165,11 +166,127 @@ export default function OrderSlip() {
   const { caseId, setCaseId, notes, setNotes, items, addItem, removeItem, updateQty, clearDispatch } = useDispatchNote();
   const { settings } = useSettings();
   const { canViewPricing, canPrintDispatch } = usePermissions();
-  const [search, setSearch] = useState('');
-  const [slipNo] = useState(SlipNumber);
-  const [mobileView, setMobileView] = useState('catalog');
+  const [search,          setSearch]          = useState('');
+  const [slipNo]                              = useState(SlipNumber);
+  const [mobileView,      setMobileView]      = useState('catalog');
   const [detailComponent, setDetailComponent] = useState(null);
-  const [waCopied, setWaCopied] = useState(false);
+  const [waCopied,        setWaCopied]        = useState(false);
+  const [selectedItems,   setSelectedItems]   = useState(new Set());
+
+  // ── Drag-select refs for the dispatch items list ─────────────────────
+  const listRef              = useRef(null); // the scrollable items container
+  const isDragging           = useRef(false);
+  const dragStartIndex       = useRef(null);
+  const dragStartValue       = useRef(true);
+  const dragOriginalSelected = useRef(null);
+  const mouseYRef            = useRef(0);
+  const scrollRafRef         = useRef(null);
+  const itemsRef             = useRef([]);
+
+  useEffect(() => { itemsRef.current = items; }, [items]);
+  // Clear selection when items list changes size (item removed etc.)
+  useEffect(() => {
+    setSelectedItems(prev => {
+      const ids = new Set(items.map(i => i.id));
+      const next = new Set([...prev].filter(id => ids.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [items]);
+
+  // ── Drag mouse listeners (scroll within listRef container) ──────────
+  useEffect(() => {
+    const ZONE = 60, MAX_SPEED = 10;
+    function containerSpeed(y) {
+      const el = listRef.current;
+      if (!el) return 0;
+      const rect = el.getBoundingClientRect();
+      const relY = y - rect.top;
+      if (relY < ZONE) return -Math.ceil(MAX_SPEED * (1 - relY / ZONE));
+      const fromBottom = rect.height - relY;
+      if (fromBottom < ZONE) return Math.ceil(MAX_SPEED * (1 - fromBottom / ZONE));
+      return 0;
+    }
+    function rowAt(x, y) {
+      const el  = document.elementFromPoint(x, y);
+      const row = el?.closest('[data-item-index]');
+      return row ? Number(row.dataset.itemIndex) : null;
+    }
+    function applyAt(idx) {
+      if (!isDragging.current || dragStartIndex.current === null) return;
+      const items = itemsRef.current;
+      const orig  = dragOriginalSelected.current;
+      if (!orig) return;
+      const lo = Math.min(dragStartIndex.current, idx);
+      const hi = Math.max(dragStartIndex.current, idx);
+      setSelectedItems(() => {
+        const next = new Set(orig);
+        for (let i = lo; i <= hi; i++) {
+          if (!items[i]) continue;
+          dragStartValue.current ? next.add(items[i].id) : next.delete(items[i].id);
+        }
+        return next;
+      });
+    }
+    function frame() {
+      if (!isDragging.current) { scrollRafRef.current = null; return; }
+      const s = containerSpeed(mouseYRef.current);
+      if (s !== 0 && listRef.current) {
+        listRef.current.scrollTop += s;
+        const idx = rowAt(window.innerWidth / 2, mouseYRef.current); // approx x centre
+        if (idx !== null) applyAt(idx);
+      }
+      scrollRafRef.current = requestAnimationFrame(frame);
+    }
+    function onMove(e) {
+      mouseYRef.current = e.clientY;
+      if (isDragging.current && !scrollRafRef.current)
+        scrollRafRef.current = requestAnimationFrame(frame);
+    }
+    function onUp() {
+      isDragging.current = false;
+      if (scrollRafRef.current) { cancelAnimationFrame(scrollRafRef.current); scrollRafRef.current = null; }
+    }
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, []);
+
+  function handleItemMouseDown(e, idx) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const id = items[idx].id;
+    dragOriginalSelected.current = new Set(selectedItems);
+    isDragging.current     = true;
+    dragStartIndex.current = idx;
+    dragStartValue.current = !selectedItems.has(id);
+    // apply immediately
+    const orig = new Set(selectedItems);
+    setSelectedItems(() => {
+      const next = new Set(orig);
+      selectedItems.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  const selectedItemCount  = items.filter(i => selectedItems.has(i.id)).length;
+  const allItemsSelected   = items.length > 0 && selectedItemCount === items.length;
+  const someItemsSelected  = selectedItemCount > 0 && !allItemsSelected;
+
+  function toggleAllItems() {
+    setSelectedItems(allItemsSelected ? new Set() : new Set(items.map(i => i.id)));
+  }
+  function clearItemSelection() { setSelectedItems(new Set()); }
+
+  function handleRemoveSelected() {
+    const ids = [...selectedItems];
+    ids.forEach(id => removeItem(id));
+    clearItemSelection();
+    toast.success(`${ids.length} item${ids.length > 1 ? 's' : ''} removed`);
+  }
 
   const { data: components = [] } = useComponents({});
 
@@ -353,36 +470,93 @@ export default function OrderSlip() {
 
               {/* Items list */}
               <div className="rounded-lg border border-border overflow-hidden">
-                <div className="px-3 py-2 bg-muted/50 border-b border-border flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Components</span>
+                {/* Header row with select-all */}
+                <div className="px-3 py-2 bg-muted/50 border-b border-border flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {items.length > 0 && (
+                      <Checkbox
+                        checked={allItemsSelected ? true : someItemsSelected ? 'indeterminate' : false}
+                        onCheckedChange={toggleAllItems}
+                        aria-label="Select all items"
+                      />
+                    )}
+                    <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Components</span>
+                  </div>
                   {items.length > 0 && (
                     <span className="text-xs text-muted-foreground">{items.length} item{items.length !== 1 ? 's' : ''}</span>
                   )}
                 </div>
 
+                {/* Batch action bar */}
+                {selectedItemCount > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b border-border">
+                    <span className="text-xs font-medium mr-auto">
+                      {selectedItemCount} item{selectedItemCount > 1 ? 's' : ''} selected
+                    </span>
+                    <button onClick={clearItemSelection} className="rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors" title="Clear">
+                      <X className="h-3 w-3" />
+                    </button>
+                    <Button variant="destructive" size="sm" className="h-6 gap-1 text-xs px-2" onClick={handleRemoveSelected}>
+                      <Trash2 className="h-3 w-3" />
+                      Remove
+                    </Button>
+                  </div>
+                )}
+
                 {items.length > 0 ? (
-                  <div className="divide-y divide-border max-h-[calc(100vh-400px)] overflow-y-auto">
-                    {items.map(item => (
-                      <div key={item.id} className="flex items-center gap-2 px-3 py-2">
-                        <div className="w-8 h-8 rounded shrink-0 overflow-hidden bg-muted">
-                          {item.image_url
-                            ? <img src={item.image_url} alt="" className="w-full h-full object-cover" />
-                            : <DentalPlaceholder />}
+                  <div ref={listRef} className="divide-y divide-border max-h-[calc(100vh-400px)] overflow-y-auto">
+                    {items.map((item, idx) => {
+                      const isChecked = selectedItems.has(item.id);
+                      return (
+                        <div
+                          key={item.id}
+                          data-item-index={idx}
+                          className={cn('flex items-center gap-2 px-3 py-2 select-none', isChecked && 'bg-muted/40')}
+                          onMouseEnter={() => {
+                            if (isDragging.current && dragStartIndex.current !== null) {
+                              const orig = dragOriginalSelected.current;
+                              if (!orig) return;
+                              const lo = Math.min(dragStartIndex.current, idx);
+                              const hi = Math.max(dragStartIndex.current, idx);
+                              setSelectedItems(() => {
+                                const next = new Set(orig);
+                                for (let i = lo; i <= hi; i++) {
+                                  if (!items[i]) continue;
+                                  dragStartValue.current ? next.add(items[i].id) : next.delete(items[i].id);
+                                }
+                                return next;
+                              });
+                            }
+                          }}
+                        >
+                          {/* Checkbox — drag starts here */}
+                          <div
+                            className="cursor-pointer shrink-0"
+                            onMouseDown={e => handleItemMouseDown(e, idx)}
+                          >
+                            <Checkbox checked={isChecked} className="pointer-events-none" />
+                          </div>
+
+                          <div className="w-8 h-8 rounded shrink-0 overflow-hidden bg-muted">
+                            {item.image_url
+                              ? <img src={item.image_url} alt="" className="w-full h-full object-cover" />
+                              : <DentalPlaceholder />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium line-clamp-1">{item.name}</div>
+                            <CopyableCode code={item.component_code} className="text-[10px]" />
+                          </div>
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button onClick={() => updateQty(item.id, item.qty - 1)} className="w-5 h-5 flex items-center justify-center rounded border border-border hover:bg-accent text-xs font-bold">−</button>
+                            <span className="w-5 text-center text-xs font-semibold">{item.qty}</span>
+                            <button onClick={() => updateQty(item.id, item.qty + 1)} className="w-5 h-5 flex items-center justify-center rounded border border-border hover:bg-accent text-xs font-bold">+</button>
+                          </div>
+                          <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium line-clamp-1">{item.name}</div>
-                          <CopyableCode code={item.component_code} className="text-[10px]" />
-                        </div>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button onClick={() => updateQty(item.id, item.qty - 1)} className="w-5 h-5 flex items-center justify-center rounded border border-border hover:bg-accent text-xs font-bold">−</button>
-                          <span className="w-5 text-center text-xs font-semibold">{item.qty}</span>
-                          <button onClick={() => updateQty(item.id, item.qty + 1)} className="w-5 h-5 flex items-center justify-center rounded border border-border hover:bg-accent text-xs font-bold">+</button>
-                        </div>
-                        <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="py-8 text-center">
