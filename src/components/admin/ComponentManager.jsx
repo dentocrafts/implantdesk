@@ -33,13 +33,14 @@ export default function ComponentManager() {
   const [selected,       setSelected]       = useState(new Set());
 
   // ── Drag-select + auto-scroll refs ─────────────────────────────────────
-  const isDragging      = useRef(false);
-  const dragStartIndex  = useRef(null);
-  const dragStartValue  = useRef(true);   // true = selecting, false = deselecting
-  const mouseXRef       = useRef(0);
-  const mouseYRef       = useRef(0);
-  const scrollRafRef    = useRef(null);
-  const filteredRef     = useRef([]);     // always-current snapshot of filtered
+  const isDragging           = useRef(false);
+  const dragStartIndex       = useRef(null);
+  const dragStartValue       = useRef(true);   // true = selecting, false = deselecting
+  const dragOriginalSelected = useRef(null);   // snapshot of selection at drag start
+  const mouseXRef            = useRef(0);
+  const mouseYRef            = useRef(0);
+  const scrollRafRef         = useRef(null);
+  const filteredRef          = useRef([]);     // always-current snapshot of filtered
 
   // ── Derived values ─────────────────────────────────────────────────────
   const isScrew = activeCategory === 'screw';
@@ -60,14 +61,18 @@ export default function ComponentManager() {
   const allSelected     = filtered.length > 0 && selectedCount === filtered.length;
   const someSelected    = selectedCount > 0 && !allSelected;
 
-  // ── Core drag selection logic (uses ref so rAF can call it safely) ─────
+  // ── Core drag selection logic (uses refs so rAF can call it safely) ─────
+  // Rebuilds selection from the original snapshot each call, so dragging
+  // backwards correctly undoes what the forward drag applied.
   function applyDragAt(idx) {
     if (!isDragging.current || dragStartIndex.current === null) return;
-    const f  = filteredRef.current;
+    const f    = filteredRef.current;
+    const orig = dragOriginalSelected.current;
+    if (!orig) return;
     const lo = Math.min(dragStartIndex.current, idx);
     const hi = Math.max(dragStartIndex.current, idx);
-    setSelected(prev => {
-      const next = new Set(prev);
+    setSelected(() => {
+      const next = new Set(orig);            // start from the pre-drag state
       for (let i = lo; i <= hi; i++) {
         if (!f[i]) continue;
         dragStartValue.current ? next.add(f[i].id) : next.delete(f[i].id);
@@ -151,16 +156,15 @@ export default function ComponentManager() {
     const id         = filtered[idx].id;
     const wasChecked = selected.has(id);
 
-    isDragging.current     = true;
-    dragStartIndex.current = idx;
-    dragStartValue.current = !wasChecked;
+    // Capture the selection state BEFORE any changes so applyDragAt can
+    // always rebuild from a clean baseline (enables rubber-band reversal)
+    dragOriginalSelected.current = new Set(selected);
+    isDragging.current           = true;
+    dragStartIndex.current       = idx;
+    dragStartValue.current       = !wasChecked; // true = selecting, false = deselecting
 
-    // Toggle the clicked row immediately
-    setSelected(prev => {
-      const next = new Set(prev);
-      wasChecked ? next.delete(id) : next.add(id);
-      return next;
-    });
+    // Apply the initial row immediately via the same logic as drag
+    applyDragAt(idx);
   }
 
   // Extends selection as the mouse sweeps over rows (normal mouse movement)
