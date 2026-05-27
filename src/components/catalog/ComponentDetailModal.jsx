@@ -1,0 +1,134 @@
+import { useState } from 'react';
+import { ClipboardList, Minus, Plus } from 'lucide-react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import DentalPlaceholder from '@/components/common/DentalPlaceholder';
+import CopyableCode from '@/components/common/CopyableCode';
+import { useDispatchNote } from '@/context/DispatchContext';
+import { useSettings } from '@/context/SettingsContext';
+import { cn, formatCurrency, getStockStatus, SYSTEM_COLORS } from '@/lib/utils';
+import { toast } from 'sonner';
+
+function SpecRow({ label, value }) {
+  if (value == null || value === '') return null;
+  return (
+    <div className="flex items-center justify-between py-2 border-b border-border last:border-0">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+export default function ComponentDetailModal({ component, open, onClose }) {
+  const [qty, setQty] = useState(1);
+  const { addItem } = useDispatchNote();
+  const { settings } = useSettings();
+
+  if (!component) return null;
+
+  const stock = getStockStatus(component.stock_qty);
+  const systemColor = SYSTEM_COLORS[component.system] || 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+
+  function handleAddToDispatch() {
+    addItem(component, qty);
+    toast.success(`Added ${qty}× to dispatch`, { description: component.name, duration: 2000 });
+    setQty(1);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+        <div className="flex flex-col sm:flex-row">
+          {/* Image */}
+          <div className="sm:w-56 shrink-0 aspect-square sm:aspect-auto bg-muted rounded-tl-lg rounded-bl-lg overflow-hidden">
+            {component.image_url ? (
+              <img
+                src={component.image_url}
+                alt={component.name}
+                className="h-full w-full object-cover"
+                onError={e => { e.target.style.display = 'none'; }}
+              />
+            ) : (
+              <DentalPlaceholder />
+            )}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 p-6">
+            <DialogHeader className="mb-4 text-left">
+              <div className="flex items-start justify-between gap-2">
+                <DialogTitle className="text-xl leading-tight pr-8">{component.name}</DialogTitle>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', systemColor)}>
+                  {component.system}
+                </span>
+                <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
+                {settings.showPricing && (
+                  <span className="text-2xl font-bold text-primary">{formatCurrency(component.price)}</span>
+                )}
+              </div>
+            </DialogHeader>
+
+            {component.description && (
+              <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{component.description}</p>
+            )}
+
+            {/* Spec table */}
+            <div className="rounded-md border border-border px-3 mb-4">
+              <SpecRow label={component.category === 'screw' ? 'Screw Type' : 'Abutment Type'} value={component.abutment_type} />
+              <SpecRow label={component.category === 'screw' ? 'Length' : 'Gingival Height'} value={`${component.gingival_height_mm} mm`} />
+              <SpecRow label="Diameter" value={`${component.platform_diameter} mm`} />
+              <SpecRow label="Material" value={component.material} />
+              <SpecRow label="Stock" value={`${component.stock_qty} units`} />
+            </div>
+
+            {/* Codes */}
+            <div className="flex flex-wrap gap-2 mb-5">
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Component Code</div>
+                <CopyableCode code={component.component_code} className="rounded px-2 py-1 bg-muted hover:bg-accent" />
+              </div>
+              {component.manufacturer_code && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Manufacturer Code</div>
+                  <CopyableCode code={component.manufacturer_code} className="rounded px-2 py-1 bg-muted hover:bg-accent" />
+                </div>
+              )}
+            </div>
+
+            {/* Add to Dispatch */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
+              <ClipboardList className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm font-medium text-primary flex-1">Add to Dispatch</span>
+              {/* Qty picker */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setQty(q => Math.max(1, q - 1))}
+                  className="h-7 w-7 flex items-center justify-center rounded border border-border bg-background hover:bg-accent transition-colors"
+                >
+                  <Minus className="h-3 w-3" />
+                </button>
+                <span className="w-8 text-center text-sm font-semibold">{qty}</span>
+                <button
+                  onClick={() => setQty(q => q + 1)}
+                  className="h-7 w-7 flex items-center justify-center rounded border border-border bg-background hover:bg-accent transition-colors"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
+              <Button size="sm" onClick={handleAddToDispatch} className="h-7 px-3 text-xs">
+                Add
+              </Button>
+            </div>
+
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
