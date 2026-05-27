@@ -6,7 +6,7 @@ import FilterPanel from '@/components/catalog/FilterPanel';
 import ComponentGrid from '@/components/catalog/ComponentGrid';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useComponents } from '@/hooks/useComponents';
+import { useComponents, useFilterOptions } from '@/hooks/useComponents';
 import { usePermissions } from '@/hooks/usePermissions';
 
 export default function Screws() {
@@ -30,6 +30,7 @@ export default function Screws() {
   ), [filters]);
 
   const { data: screws, isLoading } = useComponents({ ...filters, category: 'screw' });
+  const { data: filterOptions } = useFilterOptions('screw');
 
   function handleClearFilters() {
     setFilters(f => ({
@@ -124,6 +125,7 @@ export default function Screws() {
             onChange={setFilters}
             activeCount={activeFilterCount}
             category="screw"
+            options={filterOptions}
           />
         </div>
         <div className="flex-1 min-w-0">

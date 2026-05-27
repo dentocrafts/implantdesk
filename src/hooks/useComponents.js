@@ -43,6 +43,34 @@ export function useComponents(filters = {}) {
   });
 }
 
+// Returns distinct filter options derived from whatever is actually in the DB
+// for the given category ('component' | 'screw').
+export function useFilterOptions(category) {
+  return useQuery({
+    queryKey: ['filter-options', category],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('implant_components')
+        .select('system, abutment_type, platform_diameter, gingival_height_mm, material')
+        .eq('is_active', true)
+        .eq('category', category);
+      if (error) throw error;
+
+      const unique  = arr => [...new Set(arr.filter(Boolean))].sort();
+      const uniqueN = arr => [...new Set(arr.filter(v => v != null))].sort((a, b) => a - b);
+
+      return {
+        systems:           unique(data.map(c => c.system)),
+        abutmentTypes:     unique(data.map(c => c.abutment_type)),
+        materials:         unique(data.map(c => c.material)),
+        gingivalHeights:   uniqueN(data.map(c => c.gingival_height_mm)),
+        platformDiameters: uniqueN(data.map(c => c.platform_diameter)),
+      };
+    },
+    staleTime: 5 * 60 * 1000, // cache for 5 min
+  });
+}
+
 export function useAllComponents() {
   return useQuery({
     queryKey: ['components', 'all'],

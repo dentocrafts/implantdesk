@@ -5,7 +5,7 @@ import FilterPanel from '@/components/catalog/FilterPanel';
 import ComponentGrid from '@/components/catalog/ComponentGrid';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useComponents } from '@/hooks/useComponents';
+import { useComponents, useFilterOptions } from '@/hooks/useComponents';
 import { usePermissions } from '@/hooks/usePermissions';
 
 export default function Catalog() {
@@ -31,6 +31,7 @@ export default function Catalog() {
   }, [filters]);
 
   const { data: components, isLoading } = useComponents({ ...filters, category: 'component' });
+  const { data: filterOptions } = useFilterOptions('component');
 
   function handleClearFilters() {
     setFilters(f => ({
@@ -123,6 +124,7 @@ export default function Catalog() {
             onChange={setFilters}
             activeCount={activeFilterCount}
             category="component"
+            options={filterOptions}
           />
         </div>
 

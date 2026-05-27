@@ -5,15 +5,15 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { IMPLANT_SYSTEMS, ABUTMENT_TYPES, SCREW_TYPES, MATERIALS, GINGIVAL_HEIGHTS, SCREW_LENGTHS, PLATFORM_DIAMETERS } from '@/lib/utils';
 
 function FilterSection({ title, items, selected, onToggle }) {
+  if (!items?.length) return null;
   return (
     <div className="space-y-2">
       <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</h4>
       <div className="space-y-1.5">
         {items.map(item => {
-          const val = typeof item === 'object' ? item.value : item;
+          const val   = typeof item === 'object' ? item.value : item;
           const label = typeof item === 'object' ? item.label : String(item);
           const isChecked = selected.includes(val);
           return (
@@ -37,8 +37,9 @@ function FilterSection({ title, items, selected, onToggle }) {
   );
 }
 
-export default function FilterPanel({ filters, onChange, activeCount, category = 'component' }) {
+export default function FilterPanel({ filters, onChange, activeCount, category = 'component', options = {} }) {
   const isScrew = category === 'screw';
+
   function toggle(key, value) {
     const current = filters[key] || [];
     const next = current.includes(value)
@@ -57,6 +58,26 @@ export default function FilterPanel({ filters, onChange, activeCount, category =
       platformDiameters: [],
     });
   }
+
+  const {
+    systems           = [],
+    abutmentTypes     = [],
+    materials         = [],
+    gingivalHeights   = [],
+    platformDiameters = [],
+  } = options;
+
+  const ghItems  = gingivalHeights.map(h => ({ value: h, label: `${h} mm` }));
+  const pdItems  = platformDiameters.map(d => ({ value: d, label: `${d} mm` }));
+
+  // Only render separators between sections that have items
+  const sections = [
+    { key: 'systems',       title: 'Implant System',               items: systems,       filterKey: 'systems' },
+    { key: 'abutmentTypes', title: isScrew ? 'Screw Type' : 'Abutment Type', items: abutmentTypes, filterKey: 'abutmentTypes' },
+    { key: 'ghItems',       title: isScrew ? 'Length (mm)' : 'Gingival Height', items: ghItems, filterKey: 'gingivalHeights' },
+    { key: 'pdItems',       title: 'Platform Diameter',            items: pdItems,       filterKey: 'platformDiameters' },
+    { key: 'materials',     title: 'Material',                     items: materials,     filterKey: 'materials' },
+  ].filter(s => s.items.length > 0);
 
   return (
     <aside className="w-full lg:w-60 shrink-0">
@@ -86,40 +107,20 @@ export default function FilterPanel({ filters, onChange, activeCount, category =
 
         <ScrollArea className="h-[calc(100vh-220px)]">
           <div className="space-y-5 pr-3">
-            <FilterSection
-              title="Implant System"
-              items={IMPLANT_SYSTEMS}
-              selected={filters.systems || []}
-              onToggle={v => toggle('systems', v)}
-            />
-            <Separator />
-            <FilterSection
-              title={isScrew ? 'Screw Type' : 'Abutment Type'}
-              items={isScrew ? SCREW_TYPES : ABUTMENT_TYPES}
-              selected={filters.abutmentTypes || []}
-              onToggle={v => toggle('abutmentTypes', v)}
-            />
-            <Separator />
-            <FilterSection
-              title={isScrew ? 'Length (mm)' : 'Gingival Height'}
-              items={(isScrew ? SCREW_LENGTHS : GINGIVAL_HEIGHTS).map(h => ({ value: h, label: `${h} mm` }))}
-              selected={filters.gingivalHeights || []}
-              onToggle={v => toggle('gingivalHeights', v)}
-            />
-            <Separator />
-            <FilterSection
-              title="Platform Diameter"
-              items={PLATFORM_DIAMETERS.map(d => ({ value: d, label: `${d} mm` }))}
-              selected={filters.platformDiameters || []}
-              onToggle={v => toggle('platformDiameters', v)}
-            />
-            <Separator />
-            <FilterSection
-              title="Material"
-              items={MATERIALS}
-              selected={filters.materials || []}
-              onToggle={v => toggle('materials', v)}
-            />
+            {sections.map((s, i) => (
+              <div key={s.key}>
+                {i > 0 && <Separator className="mb-5" />}
+                <FilterSection
+                  title={s.title}
+                  items={s.items}
+                  selected={filters[s.filterKey] || []}
+                  onToggle={v => toggle(s.filterKey, v)}
+                />
+              </div>
+            ))}
+            {sections.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">Loading filters…</p>
+            )}
           </div>
         </ScrollArea>
       </div>
