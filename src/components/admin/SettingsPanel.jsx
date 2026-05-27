@@ -291,6 +291,12 @@ export default function SettingsPanel() {
         title="Sub-user Permissions"
         description="Controls what non-admin staff can do. Admins always have full access regardless of these settings."
       >
+        <SettingRow label="Manage Components" hint="Allow staff to add, edit, deactivate, or delete components">
+          <Switch
+            checked={draft.subUserPermissions?.canManageComponents ?? false}
+            onCheckedChange={v => setSubPerm('canManageComponents', v)}
+          />
+        </SettingRow>
         <SettingRow label="Log Stock Movements" hint="Allow staff to use Outward / Inward / Received buttons">
           <Switch
             checked={draft.subUserPermissions?.canLogStock ?? false}

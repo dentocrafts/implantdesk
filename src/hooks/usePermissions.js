@@ -13,6 +13,7 @@ export function usePermissions() {
       canViewHistory: true,
       canViewPricing: settings.showPricing,
       canPrintDispatch: true,
+      canManageComponents: true,
     };
   }
 
@@ -22,5 +23,6 @@ export function usePermissions() {
     canViewHistory: sp.canViewHistory ?? true,
     canViewPricing: settings.showPricing && (sp.canViewPricing ?? true),
     canPrintDispatch: sp.canPrintDispatch ?? true,
+    canManageComponents: sp.canManageComponents ?? false,
   };
 }

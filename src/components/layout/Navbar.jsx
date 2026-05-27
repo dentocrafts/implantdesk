@@ -3,6 +3,7 @@ import { Package, Settings, LogOut, ChevronDown, Stethoscope } from 'lucide-reac
 import { useAuth } from '@/context/AuthContext';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -15,6 +16,7 @@ export default function Navbar() {
   const { user, profile, signOut, isAdmin } = useAuth();
   const { totalItems } = useDispatchNote();
   const { settings } = useSettings();
+  const { canManageComponents } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -30,7 +32,7 @@ export default function Navbar() {
     { to: '/screws', label: 'Screws' },
     { to: '/stock', label: 'Stock' },
     { to: '/slip', label: 'Dispatch' },
-    ...(isAdmin ? [{ to: '/admin', label: 'Admin' }] : []),
+    ...((isAdmin || canManageComponents) ? [{ to: '/admin', label: 'Admin' }] : []),
   ];
 
   return (

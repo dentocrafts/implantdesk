@@ -23,6 +23,7 @@ export const SETTINGS_DEFAULTS = {
     canViewHistory: true,
     canViewPricing: true,
     canPrintDispatch: true,
+    canManageComponents: false,
   },
 };
 
