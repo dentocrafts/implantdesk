@@ -58,9 +58,21 @@ export const SYSTEM_COLORS = {
 };
 
 export const IMPLANT_SYSTEMS = ['Straumann', 'Nobel Biocare', 'Osstem', 'MIS', 'BioHorizons'];
-export const ABUTMENT_TYPES = ['Straight', 'Angled 17°', 'Angled 30°', 'Multi-unit', 'Temporary', 'Scan Body'];
+export const ABUTMENT_TYPES = [
+  'Straight',
+  'Angled 17°',
+  'Angled 30°',
+  'Multi-unit',
+  'Multi Abutment',
+  'Multi Angled 17°',
+  'Multi Angled 30°',
+  'Angled Selector',
+  'Transfer Abutment',
+  'Temporary',
+  'Scan Body',
+];
 export const SCREW_TYPES = ['Prosthetic Screw', 'Healing Screw', 'Cover Screw', 'Abutment Screw'];
 export const MATERIALS = ['Titanium', 'Zirconia', 'PEEK', 'Titanium-Zirconia', 'Gold-plated Titanium'];
 export const GINGIVAL_HEIGHTS = [1, 2, 3, 4, 5, 6];
 export const SCREW_LENGTHS = [6, 8, 10, 12, 14, 16];
-export const PLATFORM_DIAMETERS = [3.5, 4.1, 4.5, 5.0, 5.5];
+export const PLATFORM_DIAMETERS = [3.5, 4.1, 4.5, 4.8, 5.0, 5.5, 6.0, 7.0];
