@@ -8,45 +8,50 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Settings2, SlidersHorizontal } from 'lucide-react';
 
 export default function Admin() {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, loading, user } = useAuth();
   const { canManageComponents } = usePermissions();
   const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') === 'settings' ? 'settings' : 'components';
+
+  const hasComponentAccess = isAdmin || canManageComponents;
+  const defaultTab =
+    searchParams.get('tab') === 'settings' || !hasComponentAccess ? 'settings' : 'components';
 
   if (loading) return null;
-  if (!isAdmin && !canManageComponents) return <Navigate to="/catalog" replace />;
+  if (!user) return <Navigate to="/catalog" replace />;
 
   return (
     <Layout>
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-bold">Admin Panel</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage components and app settings</p>
+          <h2 className="text-xl font-bold">{hasComponentAccess ? 'Admin Panel' : 'Settings'}</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {hasComponentAccess ? 'Manage components and app settings' : 'Manage app settings'}
+          </p>
         </div>
 
         <Tabs defaultValue={defaultTab}>
           <TabsList className="w-full sm:w-auto">
-            <TabsTrigger value="components" className="gap-1.5">
-              <Settings2 className="h-3.5 w-3.5" />
-              Components
-            </TabsTrigger>
-            {isAdmin && (
-              <TabsTrigger value="settings" className="gap-1.5">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                Settings
+            {hasComponentAccess && (
+              <TabsTrigger value="components" className="gap-1.5">
+                <Settings2 className="h-3.5 w-3.5" />
+                Components
               </TabsTrigger>
             )}
+            <TabsTrigger value="settings" className="gap-1.5">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Settings
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="components" className="mt-4">
-            <ComponentManager />
-          </TabsContent>
-
-          {isAdmin && (
-            <TabsContent value="settings" className="mt-4">
-              <SettingsPanel />
+          {hasComponentAccess && (
+            <TabsContent value="components" className="mt-4">
+              <ComponentManager />
             </TabsContent>
           )}
+
+          <TabsContent value="settings" className="mt-4">
+            <SettingsPanel isAdmin={isAdmin} />
+          </TabsContent>
         </Tabs>
       </div>
     </Layout>

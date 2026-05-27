@@ -39,7 +39,7 @@ const THEME_OPTIONS = [
   { value: 'system', label: 'System', icon: Monitor },
 ];
 
-export default function SettingsPanel() {
+export default function SettingsPanel({ isAdmin = true }) {
   const { settings, updateSettings, resetSettings } = useSettings();
 
   // Local draft state so changes only apply on Save
@@ -110,7 +110,7 @@ export default function SettingsPanel() {
     <div className="space-y-5 max-w-2xl">
 
       {/* ── Appearance ── */}
-      <SettingSection
+      {isAdmin && <SettingSection
         title="Appearance"
         description="Choose how the app looks. System follows your device's preference."
       >
@@ -133,10 +133,10 @@ export default function SettingsPanel() {
             ))}
           </div>
         </SettingRow>
-      </SettingSection>
+      </SettingSection>}
 
       {/* ── Branding ── */}
-      <SettingSection
+      {isAdmin && <SettingSection
         title="Branding"
         description="Your logo appears in the navbar and on printed dispatch slips. Recommended: square PNG or SVG, at least 256×256px."
       >
@@ -180,10 +180,10 @@ export default function SettingsPanel() {
             </div>
           </div>
         </SettingRow>
-      </SettingSection>
+      </SettingSection>}
 
       {/* ── Lab Information ── */}
-      <SettingSection
+      {isAdmin && <SettingSection
         title="Lab / Clinic Information"
         description="Shown in the navbar, printed dispatch slips, and exported documents."
       >
@@ -201,10 +201,10 @@ export default function SettingsPanel() {
             placeholder="e.g. Precision Dental Solutions"
           />
         </SettingRow>
-      </SettingSection>
+      </SettingSection>}
 
       {/* ── Display ── */}
-      <SettingSection
+      {isAdmin && <SettingSection
         title="Display"
         description="Control what information is visible across the app."
       >
@@ -214,10 +214,10 @@ export default function SettingsPanel() {
             onCheckedChange={v => set('showPricing', v)}
           />
         </SettingRow>
-      </SettingSection>
+      </SettingSection>}
 
       {/* ── Inventory ── */}
-      <SettingSection
+      {isAdmin && <SettingSection
         title="Inventory"
         description="Controls how stock levels are flagged across the app."
       >
@@ -237,7 +237,7 @@ export default function SettingsPanel() {
             <span className="text-sm text-muted-foreground">units</span>
           </div>
         </SettingRow>
-      </SettingSection>
+      </SettingSection>}
 
       {/* ── Dispatch / WhatsApp ── */}
       <SettingSection
@@ -287,7 +287,7 @@ export default function SettingsPanel() {
       </SettingSection>
 
       {/* ── Sub-user Permissions ── */}
-      <SettingSection
+      {isAdmin && <SettingSection
         title="Sub-user Permissions"
         description="Controls what non-admin staff can do. Admins always have full access regardless of these settings."
       >
@@ -327,7 +327,7 @@ export default function SettingsPanel() {
             onCheckedChange={v => setSubPerm('canPrintDispatch', v)}
           />
         </SettingRow>
-      </SettingSection>
+      </SettingSection>}
 
       {/* ── Actions ── */}
       <div className="flex items-center justify-between pt-1">

@@ -32,7 +32,7 @@ export default function Navbar() {
     { to: '/screws', label: 'Screws' },
     { to: '/stock', label: 'Stock' },
     { to: '/slip', label: 'Dispatch' },
-    ...((isAdmin || canManageComponents) ? [{ to: '/admin', label: 'Admin' }] : []),
+    { to: '/admin', label: (isAdmin || canManageComponents) ? 'Admin' : 'Settings' },
   ];
 
   return (
@@ -103,12 +103,10 @@ export default function Navbar() {
                   <Package className="h-4 w-4 mr-2" />
                   Stock Management
                 </DropdownMenuItem>
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate('/admin?tab=settings')}>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Settings
-                  </DropdownMenuItem>
-                )}
+                <DropdownMenuItem onClick={() => navigate('/admin?tab=settings')}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Settings
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
                   <LogOut className="h-4 w-4 mr-2" />
