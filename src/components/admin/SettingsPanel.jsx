@@ -110,7 +110,7 @@ export default function SettingsPanel({ isAdmin = true }) {
     <div className="space-y-5 max-w-2xl">
 
       {/* ── Appearance ── */}
-      {isAdmin && <SettingSection
+      <SettingSection
         title="Appearance"
         description="Choose how the app looks. System follows your device's preference."
       >
@@ -133,7 +133,7 @@ export default function SettingsPanel({ isAdmin = true }) {
             ))}
           </div>
         </SettingRow>
-      </SettingSection>}
+      </SettingSection>
 
       {/* ── Branding ── */}
       {isAdmin && <SettingSection
