@@ -24,6 +24,7 @@ import { useAllComponents } from '@/hooks/useComponents';
 import { useAllStockMovements, useLogStockMovement } from '@/hooks/useStock';
 import { formatCurrency, getStockStatus, SYSTEM_COLORS, cn } from '@/lib/utils';
 import { useSettings } from '@/context/SettingsContext';
+import { useAuth } from '@/context/AuthContext';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -165,7 +166,7 @@ function StockDialog({ component, type, open, onClose }) {
 }
 
 // ── Component detail modal ────────────────────────────────────────────
-function ComponentDetailModal({ component, open, onClose, onAction }) {
+function ComponentDetailModal({ component, open, onClose, onAction, isAdmin }) {
   const { settings } = useSettings();
   if (!component) return null;
   const stock = getStockStatus(component.stock_qty);
@@ -212,34 +213,38 @@ function ComponentDetailModal({ component, open, onClose, onAction }) {
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <Button
-              variant="outline"
-              className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.out.btnClass)}
-              disabled={component.stock_qty === 0}
-              onClick={() => onAction('out')}
-            >
-              <ArrowUpRight className="h-4 w-4" />
-              <span className="text-xs font-semibold">Outward</span>
-            </Button>
-            <Button
-              variant="outline"
-              className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.in.btnClass)}
-              onClick={() => onAction('in')}
-            >
-              <Undo2 className="h-4 w-4" />
-              <span className="text-xs font-semibold">Inward</span>
-            </Button>
-            <Button
-              variant="outline"
-              className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.received.btnClass)}
-              onClick={() => onAction('received')}
-            >
-              <PackagePlus className="h-4 w-4" />
-              <span className="text-xs font-semibold">Received</span>
-            </Button>
-          </div>
+          {/* Action buttons — admin only */}
+          {isAdmin ? (
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              <Button
+                variant="outline"
+                className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.out.btnClass)}
+                disabled={component.stock_qty === 0}
+                onClick={() => onAction('out')}
+              >
+                <ArrowUpRight className="h-4 w-4" />
+                <span className="text-xs font-semibold">Outward</span>
+              </Button>
+              <Button
+                variant="outline"
+                className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.in.btnClass)}
+                onClick={() => onAction('in')}
+              >
+                <Undo2 className="h-4 w-4" />
+                <span className="text-xs font-semibold">Inward</span>
+              </Button>
+              <Button
+                variant="outline"
+                className={cn('flex-col h-auto py-3 gap-1.5', MOVEMENT_TYPES.received.btnClass)}
+                onClick={() => onAction('received')}
+              >
+                <PackagePlus className="h-4 w-4" />
+                <span className="text-xs font-semibold">Received</span>
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center pt-1">Contact an admin to update stock.</p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -263,6 +268,7 @@ function MovementBadge({ type }) {
 export default function Stock() {
   const { data: components, isLoading: loadingComponents } = useAllComponents();
   const { data: movements, isLoading: loadingMovements } = useAllStockMovements();
+  const { isAdmin } = useAuth();
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(null); // { component, type }
   const [selectedComponent, setSelectedComponent] = useState(null);
@@ -338,7 +344,7 @@ export default function Stock() {
                     <TableHead className="hidden sm:table-cell">Code</TableHead>
                     <TableHead>Stock</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -393,41 +399,43 @@ export default function Stock() {
                         <TableCell>
                           <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
                         </TableCell>
-                        <TableCell onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.out.btnClass)}
-                              onClick={() => setDialog({ component: c, type: 'out' })}
-                              disabled={c.stock_qty === 0}
-                              title="Outward — sent to doctor"
-                            >
-                              <ArrowUpRight className="h-3.5 w-3.5" />
-                              Outward
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.in.btnClass)}
-                              onClick={() => setDialog({ component: c, type: 'in' })}
-                              title="Inward — returned by doctor"
-                            >
-                              <Undo2 className="h-3.5 w-3.5" />
-                              Inward
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.received.btnClass)}
-                              onClick={() => setDialog({ component: c, type: 'received' })}
-                              title="Received — new stock from order"
-                            >
-                              <PackagePlus className="h-3.5 w-3.5" />
-                              Received
-                            </Button>
-                          </div>
-                        </TableCell>
+                        {isAdmin && (
+                          <TableCell onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.out.btnClass)}
+                                onClick={() => setDialog({ component: c, type: 'out' })}
+                                disabled={c.stock_qty === 0}
+                                title="Outward — sent to doctor"
+                              >
+                                <ArrowUpRight className="h-3.5 w-3.5" />
+                                Outward
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.in.btnClass)}
+                                onClick={() => setDialog({ component: c, type: 'in' })}
+                                title="Inward — returned by doctor"
+                              >
+                                <Undo2 className="h-3.5 w-3.5" />
+                                Inward
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className={cn('h-7 gap-1 text-xs', MOVEMENT_TYPES.received.btnClass)}
+                                onClick={() => setDialog({ component: c, type: 'received' })}
+                                title="Received — new stock from order"
+                              >
+                                <PackagePlus className="h-3.5 w-3.5" />
+                                Received
+                              </Button>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -525,6 +533,7 @@ export default function Stock() {
         component={selectedComponent}
         open={!!selectedComponent}
         onClose={() => setSelectedComponent(null)}
+        isAdmin={isAdmin}
         onAction={(type) => {
           setDialog({ component: selectedComponent, type });
           setSelectedComponent(null);
