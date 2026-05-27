@@ -116,3 +116,25 @@ export function useDeleteComponent() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
   });
 }
+
+export function useDeleteComponents() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids) => {
+      const { error } = await supabase.from('implant_components').delete().in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+  });
+}
+
+export function useUpdateComponents() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ids, updates }) => {
+      const { error } = await supabase.from('implant_components').update(updates).in('id', ids);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+  });
+}
