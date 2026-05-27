@@ -32,32 +32,107 @@ export default function ComponentManager() {
   const [activeCategory, setActiveCategory] = useState('component');
   const [selected,       setSelected]       = useState(new Set());
 
-  // ── Drag-to-select refs (no re-render needed) ──────────────────────────
+  // ── Drag-select + auto-scroll refs ─────────────────────────────────────
   const isDragging      = useRef(false);
   const dragStartIndex  = useRef(null);
-  const dragStartValue  = useRef(true); // true = selecting, false = deselecting
-
-  useEffect(() => {
-    const stop = () => { isDragging.current = false; };
-    document.addEventListener('mouseup', stop);
-    return () => document.removeEventListener('mouseup', stop);
-  }, []);
+  const dragStartValue  = useRef(true);   // true = selecting, false = deselecting
+  const mouseXRef       = useRef(0);
+  const mouseYRef       = useRef(0);
+  const scrollRafRef    = useRef(null);
+  const filteredRef     = useRef([]);     // always-current snapshot of filtered
 
   // ── Derived values ─────────────────────────────────────────────────────
   const isScrew = activeCategory === 'screw';
   const noun    = isScrew ? 'screw' : 'component';
 
-  const filtered = components?.filter(c =>
+  const filtered = (components ?? []).filter(c =>
     (c.category ?? 'component') === activeCategory &&
     (!search ||
       c.name.toLowerCase().includes(search.toLowerCase()) ||
       c.component_code?.toLowerCase().includes(search.toLowerCase()))
-  ) || [];
+  );
+
+  // Keep filteredRef in sync on every render (no dep array needed)
+  useEffect(() => { filteredRef.current = filtered; });
 
   const visibleSelected = filtered.filter(c => selected.has(c.id));
   const selectedCount   = visibleSelected.length;
   const allSelected     = filtered.length > 0 && selectedCount === filtered.length;
   const someSelected    = selectedCount > 0 && !allSelected;
+
+  // ── Core drag selection logic (uses ref so rAF can call it safely) ─────
+  function applyDragAt(idx) {
+    if (!isDragging.current || dragStartIndex.current === null) return;
+    const f  = filteredRef.current;
+    const lo = Math.min(dragStartIndex.current, idx);
+    const hi = Math.max(dragStartIndex.current, idx);
+    setSelected(prev => {
+      const next = new Set(prev);
+      for (let i = lo; i <= hi; i++) {
+        if (!f[i]) continue;
+        dragStartValue.current ? next.add(f[i].id) : next.delete(f[i].id);
+      }
+      return next;
+    });
+  }
+
+  // ── Global mouse listeners: track position, handle auto-scroll, stop drag
+  useEffect(() => {
+    const ZONE      = 80;   // px from viewport edge that triggers scroll
+    const MAX_SPEED = 14;   // px scrolled per frame at maximum proximity
+
+    function getScrollSpeed(y) {
+      if (y < ZONE) return -Math.ceil(MAX_SPEED * (1 - y / ZONE));
+      const fromBottom = window.innerHeight - y;
+      if (fromBottom < ZONE) return Math.ceil(MAX_SPEED * (1 - fromBottom / ZONE));
+      return 0;
+    }
+
+    function rowIdxAtPoint(x, y) {
+      const el  = document.elementFromPoint(x, y);
+      const row = el?.closest('[data-row-index]');
+      return row ? Number(row.dataset.rowIndex) : null;
+    }
+
+    function scrollFrame() {
+      if (!isDragging.current) { scrollRafRef.current = null; return; }
+
+      const speed = getScrollSpeed(mouseYRef.current);
+      if (speed !== 0) {
+        window.scrollBy(0, speed);
+        // After scrolling, extend selection to whatever row is under the cursor
+        const idx = rowIdxAtPoint(mouseXRef.current, mouseYRef.current);
+        if (idx !== null) applyDragAt(idx);
+      }
+      scrollRafRef.current = requestAnimationFrame(scrollFrame);
+    }
+
+    function onMouseMove(e) {
+      mouseXRef.current = e.clientX;
+      mouseYRef.current = e.clientY;
+      if (!isDragging.current) return;
+      // Kick off the rAF scroll loop if not already running
+      if (!scrollRafRef.current) {
+        scrollRafRef.current = requestAnimationFrame(scrollFrame);
+      }
+    }
+
+    function onMouseUp() {
+      isDragging.current = false;
+      if (scrollRafRef.current) {
+        cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup',   onMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup',   onMouseUp);
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, []); // refs only — no stale-closure risk
 
   // ── Selection helpers ──────────────────────────────────────────────────
   function toggleAll() {
@@ -68,38 +143,29 @@ export default function ComponentManager() {
 
   function switchCategory(cat) { setActiveCategory(cat); setSelected(new Set()); }
 
-  // ── Drag-to-select handlers ────────────────────────────────────────────
+  // Starts a drag from the checkbox cell
   function handleCheckboxMouseDown(e, idx) {
     if (e.button !== 0) return;
     e.preventDefault(); // prevent text-selection cursor
 
-    const id          = filtered[idx].id;
-    const wasSelected = selected.has(id);
+    const id         = filtered[idx].id;
+    const wasChecked = selected.has(id);
 
     isDragging.current     = true;
     dragStartIndex.current = idx;
-    dragStartValue.current = !wasSelected; // selecting or deselecting?
+    dragStartValue.current = !wasChecked;
 
+    // Toggle the clicked row immediately
     setSelected(prev => {
       const next = new Set(prev);
-      wasSelected ? next.delete(id) : next.add(id);
+      wasChecked ? next.delete(id) : next.add(id);
       return next;
     });
   }
 
+  // Extends selection as the mouse sweeps over rows (normal mouse movement)
   function handleRowMouseEnter(idx) {
-    if (!isDragging.current || dragStartIndex.current === null) return;
-    const lo = Math.min(dragStartIndex.current, idx);
-    const hi = Math.max(dragStartIndex.current, idx);
-    setSelected(prev => {
-      const next = new Set(prev);
-      for (let i = lo; i <= hi; i++) {
-        dragStartValue.current
-          ? next.add(filtered[i].id)
-          : next.delete(filtered[i].id);
-      }
-      return next;
-    });
+    applyDragAt(idx);
   }
 
   // ── Single-item actions ────────────────────────────────────────────────
@@ -150,11 +216,11 @@ export default function ComponentManager() {
     const headers = ['Name', 'System', 'Type', 'Code', 'Price', 'Stock', 'Status'];
     const rows = visibleSelected.map(c => [
       `"${(c.name ?? '').replace(/"/g, '""')}"`,
-      c.system          ?? '',
-      c.abutment_type   ?? '',
-      c.component_code  ?? '',
-      c.price           ?? 0,
-      c.stock_qty       ?? 0,
+      c.system         ?? '',
+      c.abutment_type  ?? '',
+      c.component_code ?? '',
+      c.price          ?? 0,
+      c.stock_qty      ?? 0,
       c.is_active ? 'Active' : 'Hidden',
     ]);
     const csv  = [headers, ...rows].map(r => r.join(',')).join('\n');
@@ -227,7 +293,6 @@ export default function ComponentManager() {
       {/* Batch action bar */}
       {selectedCount > 0 && (
         <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
-          {/* Count + clear */}
           <div className="flex items-center gap-1.5 mr-auto">
             <span className="text-sm font-medium">
               {selectedCount} {noun}{selectedCount > 1 ? 's' : ''} selected
@@ -240,8 +305,7 @@ export default function ComponentManager() {
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-          {/* Actions */}
-          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchActivate} disabled={batchBusy}>
+          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchActivate}   disabled={batchBusy}>
             <ToggleRight className="h-3.5 w-3.5 text-primary" />
             Activate
           </Button>
@@ -249,7 +313,7 @@ export default function ComponentManager() {
             <ToggleLeft className="h-3.5 w-3.5 text-muted-foreground" />
             Deactivate
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchExport} disabled={batchBusy}>
+          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchExport}     disabled={batchBusy}>
             <Download className="h-3.5 w-3.5" />
             Export CSV
           </Button>
@@ -297,12 +361,13 @@ export default function ComponentManager() {
                   return (
                     <TableRow
                       key={c.id}
+                      data-row-index={idx}
                       className={cn('select-none', isChecked && 'bg-muted/40')}
                       onMouseEnter={() => handleRowMouseEnter(idx)}
                     >
-                      {/* Checkbox cell — drag-to-select starts here */}
+                      {/* Checkbox cell — mousedown starts the drag */}
                       <TableCell
-                        className="pr-0 w-10 cursor-pointer"
+                        className="w-10 pr-0 cursor-pointer"
                         onMouseDown={e => handleCheckboxMouseDown(e, idx)}
                       >
                         <Checkbox
