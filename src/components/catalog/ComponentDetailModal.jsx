@@ -10,6 +10,7 @@ import DentalPlaceholder from '@/components/common/DentalPlaceholder';
 import CopyableCode from '@/components/common/CopyableCode';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { cn, formatCurrency, getStockStatus, SYSTEM_COLORS } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -27,6 +28,7 @@ export default function ComponentDetailModal({ component, open, onClose }) {
   const [qty, setQty] = useState(1);
   const { addItem } = useDispatchNote();
   const { settings } = useSettings();
+  const { canViewPricing } = usePermissions();
 
   if (!component) return null;
 
@@ -68,7 +70,7 @@ export default function ComponentDetailModal({ component, open, onClose }) {
                   {component.system}
                 </span>
                 <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
-                {settings.showPricing && (
+                {canViewPricing && (
                   <span className="text-2xl font-bold text-primary">{formatCurrency(component.price)}</span>
                 )}
               </div>

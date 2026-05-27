@@ -60,6 +60,10 @@ export default function SettingsPanel() {
     setDraft(d => ({ ...d, waFields: { ...d.waFields, [key]: value } }));
   }
 
+  function setSubPerm(key, value) {
+    setDraft(d => ({ ...d, subUserPermissions: { ...d.subUserPermissions, [key]: value } }));
+  }
+
   // Logo upload — saves immediately (no Save button needed)
   async function handleLogoUpload(e) {
     const file = e.target.files?.[0];
@@ -278,6 +282,43 @@ export default function SettingsPanel() {
           <Switch
             checked={draft.waFields?.status ?? true}
             onCheckedChange={v => setWaField('status', v)}
+          />
+        </SettingRow>
+      </SettingSection>
+
+      {/* ── Sub-user Permissions ── */}
+      <SettingSection
+        title="Sub-user Permissions"
+        description="Controls what non-admin staff can do. Admins always have full access regardless of these settings."
+      >
+        <SettingRow label="Log Stock Movements" hint="Allow staff to use Outward / Inward / Received buttons">
+          <Switch
+            checked={draft.subUserPermissions?.canLogStock ?? false}
+            onCheckedChange={v => setSubPerm('canLogStock', v)}
+          />
+        </SettingRow>
+        <SettingRow label="View Stock History" hint="Allow staff to see the movement history tab">
+          <Switch
+            checked={draft.subUserPermissions?.canViewHistory ?? true}
+            onCheckedChange={v => setSubPerm('canViewHistory', v)}
+          />
+        </SettingRow>
+        <SettingRow label="View Pricing" hint="Allow staff to see component prices">
+          <Switch
+            checked={draft.subUserPermissions?.canViewPricing ?? true}
+            onCheckedChange={v => setSubPerm('canViewPricing', v)}
+          />
+        </SettingRow>
+        <SettingRow label="Export CSV" hint="Allow staff to export catalog and screws to CSV">
+          <Switch
+            checked={draft.subUserPermissions?.canExportCSV ?? true}
+            onCheckedChange={v => setSubPerm('canExportCSV', v)}
+          />
+        </SettingRow>
+        <SettingRow label="Print Dispatch Slips" hint="Allow staff to print or save dispatch slips as PDF">
+          <Switch
+            checked={draft.subUserPermissions?.canPrintDispatch ?? true}
+            onCheckedChange={v => setSubPerm('canPrintDispatch', v)}
           />
         </SettingRow>
       </SettingSection>

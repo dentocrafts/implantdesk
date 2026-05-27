@@ -17,6 +17,13 @@ export const SETTINGS_DEFAULTS = {
     componentCode: true,
     status: true,
   },
+  subUserPermissions: {
+    canLogStock: false,
+    canExportCSV: true,
+    canViewHistory: true,
+    canViewPricing: true,
+    canPrintDispatch: true,
+  },
 };
 
 function loadSettings() {

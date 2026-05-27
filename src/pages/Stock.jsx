@@ -25,6 +25,7 @@ import { useAllStockMovements, useLogStockMovement } from '@/hooks/useStock';
 import { formatCurrency, getStockStatus, SYSTEM_COLORS, cn } from '@/lib/utils';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -269,6 +270,7 @@ export default function Stock() {
   const { data: components, isLoading: loadingComponents } = useAllComponents();
   const { data: movements, isLoading: loadingMovements } = useAllStockMovements();
   const { isAdmin } = useAuth();
+  const { canLogStock, canViewHistory } = usePermissions();
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(null); // { component, type }
   const [selectedComponent, setSelectedComponent] = useState(null);
@@ -300,15 +302,17 @@ export default function Stock() {
               <SlidersHorizontal className="h-3.5 w-3.5" />
               Inventory
             </Button>
-            <Button
-              variant={activeTab === 'history' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setActiveTab('history')}
-              className="gap-1.5"
-            >
-              <History className="h-3.5 w-3.5" />
-              History
-            </Button>
+            {canViewHistory && (
+              <Button
+                variant={activeTab === 'history' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setActiveTab('history')}
+                className="gap-1.5"
+              >
+                <History className="h-3.5 w-3.5" />
+                History
+              </Button>
+            )}
           </div>
         </div>
 
@@ -344,7 +348,7 @@ export default function Stock() {
                     <TableHead className="hidden sm:table-cell">Code</TableHead>
                     <TableHead>Stock</TableHead>
                     <TableHead>Status</TableHead>
-                    {isAdmin && <TableHead className="text-right">Actions</TableHead>}
+                    {canLogStock && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -399,7 +403,7 @@ export default function Stock() {
                         <TableCell>
                           <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
                         </TableCell>
-                        {isAdmin && (
+                        {canLogStock && (
                           <TableCell onClick={e => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               <Button
@@ -533,7 +537,7 @@ export default function Stock() {
         component={selectedComponent}
         open={!!selectedComponent}
         onClose={() => setSelectedComponent(null)}
-        isAdmin={isAdmin}
+        isAdmin={canLogStock}
         onAction={(type) => {
           setDialog({ component: selectedComponent, type });
           setSelectedComponent(null);

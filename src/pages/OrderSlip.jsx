@@ -13,6 +13,7 @@ import CopyableCode from '@/components/common/CopyableCode';
 import { useComponents } from '@/hooks/useComponents';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { SYSTEM_COLORS, cn, formatCurrency, getStockStatus, copyToClipboard } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -25,6 +26,7 @@ function SlipNumber() {
 function DispatchComponentModal({ component, open, onClose, onAdd, currentQty }) {
   const [qty, setQty] = useState(1);
   const { settings } = useSettings();
+  const { canViewPricing } = usePermissions();
   if (!component) return null;
   const stock = getStockStatus(component.stock_qty);
   const sysColor = SYSTEM_COLORS[component.system] || '';
@@ -59,8 +61,8 @@ function DispatchComponentModal({ component, open, onClose, onAdd, currentQty })
           </div>
 
           {/* Stats row */}
-          <div className={cn('divide-x divide-border rounded-lg border border-border text-center', settings.showPricing ? 'grid grid-cols-3' : 'grid grid-cols-2')}>
-            {settings.showPricing && (
+          <div className={cn('divide-x divide-border rounded-lg border border-border text-center', canViewPricing ? 'grid grid-cols-3' : 'grid grid-cols-2')}>
+            {canViewPricing && (
               <div className="px-3 py-2.5">
                 <div className="text-xs text-muted-foreground mb-0.5">Price</div>
                 <div className="font-bold text-primary text-sm">{formatCurrency(component.price)}</div>
@@ -162,6 +164,7 @@ function CatalogCard({ component, onAdd, onViewDetail, dispatchQty }) {
 export default function OrderSlip() {
   const { caseId, setCaseId, notes, setNotes, items, addItem, removeItem, updateQty, clearDispatch } = useDispatchNote();
   const { settings } = useSettings();
+  const { canViewPricing, canPrintDispatch } = usePermissions();
   const [search, setSearch] = useState('');
   const [slipNo] = useState(SlipNumber);
   const [mobileView, setMobileView] = useState('catalog');
@@ -250,10 +253,12 @@ export default function OrderSlip() {
                 }
                 {waCopied ? 'Copied!' : 'Copy for WhatsApp'}
               </Button>
-              <Button onClick={() => window.print()} disabled={!items.length} className="gap-2">
-                <Printer className="h-4 w-4" />
-                Print / Save PDF
-              </Button>
+              {canPrintDispatch && (
+                <Button onClick={() => window.print()} disabled={!items.length} className="gap-2">
+                  <Printer className="h-4 w-4" />
+                  Print / Save PDF
+                </Button>
+              )}
             </div>
           </div>
 
@@ -452,7 +457,7 @@ export default function OrderSlip() {
                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', fontWeight: '600', width: '52px' }}>Image</th>
                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', fontWeight: '600' }}>Component Name</th>
                 <th style={{ padding: '8px 10px', textAlign: 'left', fontSize: '11px', fontWeight: '600', width: '160px' }}>Component Code</th>
-                {settings.showPricing && (
+                {canViewPricing && (
                   <th style={{ padding: '8px 10px', textAlign: 'right', fontSize: '11px', fontWeight: '600', width: '80px' }}>Price</th>
                 )}
                 <th style={{ padding: '8px 10px', textAlign: 'center', fontSize: '11px', fontWeight: '600', width: '60px' }}>Qty</th>
@@ -483,7 +488,7 @@ export default function OrderSlip() {
                   </td>
                   <td style={{ padding: '8px 10px', fontSize: '13px', fontWeight: '500' }}>{item.name}</td>
                   <td style={{ padding: '8px 10px', fontSize: '12px', fontFamily: 'monospace', color: '#374151' }}>{item.component_code}</td>
-                  {settings.showPricing && (
+                  {canViewPricing && (
                     <td style={{ padding: '8px 10px', textAlign: 'right', fontSize: '12px', color: '#16a34a', fontWeight: '600' }}>{formatCurrency(item.price)}</td>
                   )}
                   <td style={{ padding: '8px 10px', textAlign: 'center', fontSize: '15px', fontWeight: '700', color: '#16a34a' }}>{item.qty}</td>

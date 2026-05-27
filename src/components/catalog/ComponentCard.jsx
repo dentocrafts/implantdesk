@@ -5,6 +5,7 @@ import DentalPlaceholder from '@/components/common/DentalPlaceholder';
 import CopyableCode from '@/components/common/CopyableCode';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { cn, formatCurrency, getStockStatus, SYSTEM_COLORS } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -13,6 +14,7 @@ export default function ComponentCard({ component, onViewDetail }) {
   const systemColor = SYSTEM_COLORS[component.system] || 'bg-slate-500/20 text-slate-300 border-slate-500/30';
   const { addItem } = useDispatchNote();
   const { settings } = useSettings();
+  const { canViewPricing } = usePermissions();
 
   function handleAddToDispatch(e) {
     e.stopPropagation();
@@ -82,7 +84,7 @@ export default function ComponentCard({ component, onViewDetail }) {
 
         {/* Price + stock */}
         <div className="flex items-center justify-between mt-auto pt-1">
-          {settings.showPricing
+          {canViewPricing
             ? <span className="font-bold text-primary">{formatCurrency(component.price)}</span>
             : <span />
           }

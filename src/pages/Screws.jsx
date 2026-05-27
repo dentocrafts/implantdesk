@@ -7,8 +7,10 @@ import ComponentGrid from '@/components/catalog/ComponentGrid';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useComponents } from '@/hooks/useComponents';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export default function Screws() {
+  const { canExportCSV } = usePermissions();
   const [filters, setFilters] = useState({
     search: '',
     systems: [],
@@ -86,10 +88,12 @@ export default function Screws() {
               </span>
             )}
           </Button>
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV} disabled={!screws?.length}>
-            <Download className="h-3.5 w-3.5" />
-            Export CSV
-          </Button>
+          {canExportCSV && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV} disabled={!screws?.length}>
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </Button>
+          )}
         </div>
       </div>
 
