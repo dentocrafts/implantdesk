@@ -256,45 +256,48 @@ export default function ComponentManager() {
   return (
     <div className="space-y-4">
 
-      {/* Category tabs */}
-      <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-        {[
-          { cat: 'component', label: 'Components' },
-          { cat: 'screw',     label: 'Screws', icon: true },
-        ].map(({ cat, label, icon }) => (
-          <button
-            key={cat}
-            onClick={() => switchCategory(cat)}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-              activeCategory === cat
-                ? 'bg-background shadow-sm text-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {icon && <ScrewIcon className="h-3.5 w-3.5" />}
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* Sticky: category tabs + toolbar */}
+      <div className="sticky top-28 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-3 pb-3 bg-background/95 backdrop-blur-sm border-b border-border space-y-2">
+        {/* Category tabs */}
+        <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+          {[
+            { cat: 'component', label: 'Components' },
+            { cat: 'screw',     label: 'Screws', icon: true },
+          ].map(({ cat, label, icon }) => (
+            <button
+              key={cat}
+              onClick={() => switchCategory(cat)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
+                activeCategory === cat
+                  ? 'bg-background shadow-sm text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {icon && <ScrewIcon className="h-3.5 w-3.5" />}
+              {label}
+            </button>
+          ))}
+        </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-        <Input
-          placeholder={`Search ${isScrew ? 'screws' : 'components'}...`}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full sm:max-w-xs"
-        />
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1.5 flex-1 sm:flex-none">
-            <FileSpreadsheet className="h-4 w-4" />
-            Import Excel
-          </Button>
-          <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-1.5 flex-1 sm:flex-none">
-            <Plus className="h-4 w-4" />
-            Add {isScrew ? 'Screw' : 'Component'}
-          </Button>
+        {/* Toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <Input
+            placeholder={`Search ${isScrew ? 'screws' : 'components'}...`}
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full sm:max-w-xs"
+          />
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1.5 flex-1 sm:flex-none">
+              <FileSpreadsheet className="h-4 w-4" />
+              Import Excel
+            </Button>
+            <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }} className="gap-1.5 flex-1 sm:flex-none">
+              <Plus className="h-4 w-4" />
+              Add {isScrew ? 'Screw' : 'Component'}
+            </Button>
+          </div>
         </div>
       </div>
 

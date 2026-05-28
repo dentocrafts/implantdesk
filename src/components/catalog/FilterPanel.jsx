@@ -81,7 +81,7 @@ export default function FilterPanel({ filters, onChange, activeCount, category =
 
   return (
     <aside className="w-full lg:w-60 shrink-0">
-      <div className="rounded-lg border border-border bg-card p-4 sticky top-20">
+      <div className="rounded-lg border border-border bg-card p-4 sticky top-28">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
@@ -105,7 +105,7 @@ export default function FilterPanel({ filters, onChange, activeCount, category =
           )}
         </div>
 
-        <ScrollArea className="h-[calc(100vh-220px)]">
+        <ScrollArea className="h-[calc(100vh-280px)]">
           <div className="space-y-5 pr-3">
             {sections.map((s, i) => (
               <div key={s.key}>

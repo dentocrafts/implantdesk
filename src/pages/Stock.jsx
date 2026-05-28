@@ -387,23 +387,33 @@ export default function Stock() {
   return (
     <Layout>
       <div className="space-y-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-bold">Stock Management</h2>
-            <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">Outward/Inward affect lab stock · Received is an order log only</p>
-          </div>
-          <div className="flex gap-2 shrink-0">
-            <Button variant={activeTab === 'inventory' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('inventory')} className="gap-1.5">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              Inventory
-            </Button>
-            {canViewHistory && (
-              <Button variant={activeTab === 'history' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('history')} className="gap-1.5">
-                <History className="h-3.5 w-3.5" />
-                History
+        {/* Sticky action bar: title + tab switcher + search */}
+        <div className="sticky top-14 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-3 pb-3 bg-background/95 backdrop-blur-sm border-b border-border">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <div>
+              <h2 className="text-xl font-bold">Stock Management</h2>
+              <p className="text-sm text-muted-foreground mt-0.5 hidden sm:block">Outward/Inward affect lab stock · Received is an order log only</p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              {activeTab === 'inventory' && (
+                <Input
+                  placeholder="Search components…"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="h-8 w-44 text-sm"
+                />
+              )}
+              <Button variant={activeTab === 'inventory' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('inventory')} className="gap-1.5">
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Inventory
               </Button>
-            )}
+              {canViewHistory && (
+                <Button variant={activeTab === 'history' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('history')} className="gap-1.5">
+                  <History className="h-3.5 w-3.5" />
+                  History
+                </Button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -424,12 +434,6 @@ export default function Stock() {
         {/* ── Inventory Tab ── */}
         {activeTab === 'inventory' && (
           <>
-            <Input
-              placeholder="Search components…"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="max-w-sm"
-            />
 
             {/* Batch action bar */}
             {selectedCount > 0 && (

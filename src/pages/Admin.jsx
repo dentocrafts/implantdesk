@@ -46,26 +46,29 @@ export default function Admin() {
         </div>
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="w-full sm:w-auto">
-            {hasComponentAccess && (
-              <TabsTrigger value="components" className="gap-1.5">
-                <Settings2 className="h-3.5 w-3.5" />
-                Components
+          {/* Sticky tab switcher — stays visible when scrolled */}
+          <div className="sticky top-14 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 bg-background/95 backdrop-blur-sm border-b border-border mb-4">
+            <TabsList className="w-full sm:w-auto">
+              {hasComponentAccess && (
+                <TabsTrigger value="components" className="gap-1.5">
+                  <Settings2 className="h-3.5 w-3.5" />
+                  Components
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="settings" className="gap-1.5">
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Settings
               </TabsTrigger>
-            )}
-            <TabsTrigger value="settings" className="gap-1.5">
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              Settings
-            </TabsTrigger>
-          </TabsList>
+            </TabsList>
+          </div>
 
           {hasComponentAccess && (
-            <TabsContent value="components" className="mt-4">
+            <TabsContent value="components" className="mt-0">
               <ComponentManager />
             </TabsContent>
           )}
 
-          <TabsContent value="settings" className="mt-4">
+          <TabsContent value="settings" className="mt-0">
             <SettingsPanel isAdmin={isAdmin} />
           </TabsContent>
         </Tabs>

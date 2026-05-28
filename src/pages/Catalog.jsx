@@ -79,20 +79,41 @@ export default function Catalog() {
 
   return (
     <Layout>
-      {/* Page header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-        <div>
-          <h2 className="text-xl font-bold">Component Catalog</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {isLoading ? 'Loading…' : `${components?.length ?? 0} components`}
-            {activeFilterCount > 0 && ` · ${activeFilterCount} filter${activeFilterCount > 1 ? 's' : ''} active`}
-          </p>
-        </div>
-        <div className="flex gap-2">
+      {/* Page title — scrolls away */}
+      <div className="mb-3">
+        <h2 className="text-xl font-bold">Component Catalog</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {isLoading ? 'Loading…' : `${components?.length ?? 0} components`}
+          {activeFilterCount > 0 && ` · ${activeFilterCount} filter${activeFilterCount > 1 ? 's' : ''} active`}
+        </p>
+      </div>
+
+      {/* Sticky action bar */}
+      <div className="sticky top-14 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 bg-background/95 backdrop-blur-sm border-b border-border mb-6">
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              placeholder="Search by name, component code, or manufacturer code…"
+              value={filters.search}
+              onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+              className="pl-9 pr-9"
+            />
+            {filters.search && (
+              <button
+                onClick={() => setFilters(f => ({ ...f, search: '' }))}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {/* Filter toggle — mobile only */}
           <Button
             variant="outline"
             size="sm"
-            className="gap-1.5 lg:hidden"
+            className="gap-1.5 lg:hidden shrink-0"
             onClick={() => setShowFilters(v => !v)}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
@@ -104,31 +125,12 @@ export default function Catalog() {
             )}
           </Button>
           {canExportCSV && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV} disabled={!components?.length}>
+            <Button variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={exportCSV} disabled={!components?.length}>
               <Download className="h-3.5 w-3.5" />
               Export CSV
             </Button>
           )}
         </div>
-      </div>
-
-      {/* Search bar */}
-      <div className="relative mb-5">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        <Input
-          placeholder="Search by name, component code, or manufacturer code…"
-          value={filters.search}
-          onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-          className="pl-9 pr-9"
-        />
-        {filters.search && (
-          <button
-            onClick={() => setFilters(f => ({ ...f, search: '' }))}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
       {/* Layout: sidebar + grid */}
