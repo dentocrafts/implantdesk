@@ -186,10 +186,15 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
   const watchedType    = watch('abutment_type');
   const watchedMat     = watch('material');
 
-  // Merged option lists (hardcoded + user-added)
-  const allSystems  = uniq([...IMPLANT_SYSTEMS,                          ...(settings.customSystems      || [])]);
-  const allTypes    = uniq([...(isScrew ? SCREW_TYPES : ABUTMENT_TYPES), ...(isScrew ? (settings.customScrewTypes || []) : (settings.customAbutmentTypes || []))]);
-  const allMaterials = uniq([...MATERIALS,                               ...(settings.customMaterials   || [])]);
+  // Hidden lists from settings
+  const hiddenSys  = settings.hiddenSystems       || [];
+  const hiddenType = isScrew ? (settings.hiddenScrewTypes || []) : (settings.hiddenAbutmentTypes || []);
+  const hiddenMat  = settings.hiddenMaterials      || [];
+
+  // Merged option lists (hardcoded minus hidden + user-added customs)
+  const allSystems   = uniq([...IMPLANT_SYSTEMS.filter(s => !hiddenSys.includes(s)),                                                ...(settings.customSystems      || [])]);
+  const allTypes     = uniq([...(isScrew ? SCREW_TYPES : ABUTMENT_TYPES).filter(t => !hiddenType.includes(t)),                      ...(isScrew ? (settings.customScrewTypes || []) : (settings.customAbutmentTypes || []))]);
+  const allMaterials = uniq([...MATERIALS.filter(m => !hiddenMat.includes(m)),                                                      ...(settings.customMaterials    || [])]);
 
   // ── Image upload ──────────────────────────────────────────────────────────
 

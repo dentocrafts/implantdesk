@@ -15,6 +15,11 @@ export const SETTINGS_DEFAULTS = {
   customAbutmentTypes: [],
   customScrewTypes: [],
   customMaterials: [],
+  // Built-in options the user has chosen to hide from dropdowns
+  hiddenSystems: [],
+  hiddenAbutmentTypes: [],
+  hiddenScrewTypes: [],
+  hiddenMaterials: [],
   waFields: {
     caseId: true,
     patientName: true,

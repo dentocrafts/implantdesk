@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { Sun, Moon, Monitor, RotateCcw, Save, Upload, X, ImageIcon } from 'lucide-react';
+import { Sun, Moon, Monitor, RotateCcw, Save, Upload, X, ImageIcon, EyeOff, Eye, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/lib/supabase';
 import { useSettings, SETTINGS_DEFAULTS } from '@/context/SettingsContext';
+import { IMPLANT_SYSTEMS, ABUTMENT_TYPES, SCREW_TYPES, MATERIALS } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -39,6 +41,54 @@ const THEME_OPTIONS = [
   { value: 'system', label: 'System', icon: Monitor },
 ];
 
+// ── Catalog option list (manage types / systems / materials) ─────────────────
+function CatalogOptionList({ label, builtIn, custom, hidden, onToggleHidden, onDeleteCustom }) {
+  const hasItems = builtIn.length > 0 || custom.length > 0;
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+      {!hasItems && <p className="text-xs text-muted-foreground italic">No options.</p>}
+      <div className="rounded-md border border-border divide-y divide-border">
+        {builtIn.map(item => {
+          const isHidden = hidden.includes(item);
+          return (
+            <div key={item} className={cn('flex items-center justify-between px-3 py-2 text-sm', isHidden && 'opacity-50')}>
+              <span className={cn(isHidden && 'line-through text-muted-foreground')}>{item}</span>
+              <button
+                type="button"
+                onClick={() => onToggleHidden(item)}
+                title={isHidden ? 'Show in dropdowns' : 'Hide from dropdowns'}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {isHidden
+                  ? <><Eye     className="h-3.5 w-3.5" /> Show</>
+                  : <><EyeOff className="h-3.5 w-3.5" /> Hide</>
+                }
+              </button>
+            </div>
+          );
+        })}
+        {custom.map(item => (
+          <div key={item} className="flex items-center justify-between px-3 py-2 text-sm">
+            <span className="flex items-center gap-1.5">
+              {item}
+              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">custom</Badge>
+            </span>
+            <button
+              type="button"
+              onClick={() => onDeleteCustom(item)}
+              title="Delete this option"
+              className="text-destructive hover:opacity-70 transition-opacity"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPanel({ isAdmin = true }) {
   const { settings, updateSettings, resetSettings } = useSettings();
 
@@ -62,6 +112,21 @@ export default function SettingsPanel({ isAdmin = true }) {
 
   function setSubPerm(key, value) {
     setDraft(d => ({ ...d, subUserPermissions: { ...d.subUserPermissions, [key]: value } }));
+  }
+
+  // Catalog option helpers — these save immediately (no Save button needed)
+  function toggleHidden(hiddenKey, value) {
+    const current = settings[hiddenKey] || [];
+    const next = current.includes(value) ? current.filter(v => v !== value) : [...current, value];
+    updateSettings({ [hiddenKey]: next });
+    setDraft(d => ({ ...d, [hiddenKey]: next }));
+  }
+
+  function deleteCustom(customKey, value) {
+    const next = (settings[customKey] || []).filter(v => v !== value);
+    updateSettings({ [customKey]: next });
+    setDraft(d => ({ ...d, [customKey]: next }));
+    toast.success(`"${value}" removed`);
   }
 
   // Logo upload — saves immediately (no Save button needed)
@@ -285,6 +350,45 @@ export default function SettingsPanel({ isAdmin = true }) {
           />
         </SettingRow>
       </SettingSection>
+
+      {/* ── Catalog Options ── */}
+      {isAdmin && <SettingSection
+        title="Catalog Options"
+        description="Hide built-in items or remove custom ones from the System, Type, and Material dropdowns. Changes apply immediately."
+      >
+        <CatalogOptionList
+          label="Implant Systems"
+          builtIn={IMPLANT_SYSTEMS}
+          custom={settings.customSystems || []}
+          hidden={settings.hiddenSystems || []}
+          onToggleHidden={v => toggleHidden('hiddenSystems', v)}
+          onDeleteCustom={v => deleteCustom('customSystems', v)}
+        />
+        <CatalogOptionList
+          label="Abutment Types"
+          builtIn={ABUTMENT_TYPES}
+          custom={settings.customAbutmentTypes || []}
+          hidden={settings.hiddenAbutmentTypes || []}
+          onToggleHidden={v => toggleHidden('hiddenAbutmentTypes', v)}
+          onDeleteCustom={v => deleteCustom('customAbutmentTypes', v)}
+        />
+        <CatalogOptionList
+          label="Screw Types"
+          builtIn={SCREW_TYPES}
+          custom={settings.customScrewTypes || []}
+          hidden={settings.hiddenScrewTypes || []}
+          onToggleHidden={v => toggleHidden('hiddenScrewTypes', v)}
+          onDeleteCustom={v => deleteCustom('customScrewTypes', v)}
+        />
+        <CatalogOptionList
+          label="Materials"
+          builtIn={MATERIALS}
+          custom={settings.customMaterials || []}
+          hidden={settings.hiddenMaterials || []}
+          onToggleHidden={v => toggleHidden('hiddenMaterials', v)}
+          onDeleteCustom={v => deleteCustom('customMaterials', v)}
+        />
+      </SettingSection>}
 
       {/* ── Sub-user Permissions ── */}
       {isAdmin && <SettingSection
