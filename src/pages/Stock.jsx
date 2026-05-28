@@ -29,6 +29,7 @@ import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { parseImagePos } from '@/lib/imageUtils';
 
 // ── Movement type config ──────────────────────────────────────────────
 const MOVEMENT_TYPES = {
@@ -159,13 +160,14 @@ function ComponentDetailModal({ component, open, onClose, onAction, isAdmin }) {
   if (!component) return null;
   const stock = getStockStatus(component.stock_qty);
   const sysColor = SYSTEM_COLORS[component.system] || '';
+  const { src: imgSrc, x: imgX, y: imgY } = parseImagePos(component.image_url);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md p-0 overflow-hidden">
         <div className="w-full h-44 bg-muted overflow-hidden">
-          {component.image_url
-            ? <img src={component.image_url} alt={component.name} className="w-full h-full object-cover" />
+          {imgSrc
+            ? <img src={imgSrc} alt={component.name} className="w-full h-full object-cover" style={{ objectPosition: `${imgX}% ${imgY}%` }} />
             : <DentalPlaceholder />}
         </div>
         <div className="p-5 space-y-4">

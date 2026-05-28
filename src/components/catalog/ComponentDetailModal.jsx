@@ -12,6 +12,7 @@ import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn, formatCurrency, getStockStatus, SYSTEM_COLORS } from '@/lib/utils';
+import { parseImagePos } from '@/lib/imageUtils';
 import { toast } from 'sonner';
 
 function SpecRow({ label, value }) {
@@ -34,6 +35,7 @@ export default function ComponentDetailModal({ component, open, onClose }) {
 
   const stock = getStockStatus(component.stock_qty);
   const systemColor = SYSTEM_COLORS[component.system] || 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+  const { src: imgSrc, x: imgX, y: imgY } = parseImagePos(component.image_url);
 
   function handleAddToDispatch() {
     addItem(component, qty);
@@ -47,11 +49,12 @@ export default function ComponentDetailModal({ component, open, onClose }) {
         <div className="flex flex-col sm:flex-row">
           {/* Image */}
           <div className="sm:w-56 shrink-0 aspect-square sm:aspect-auto bg-muted rounded-tl-lg rounded-bl-lg overflow-hidden">
-            {component.image_url ? (
+            {imgSrc ? (
               <img
-                src={component.image_url}
+                src={imgSrc}
                 alt={component.name}
                 className="h-full w-full object-cover"
+                style={{ objectPosition: `${imgX}% ${imgY}%` }}
                 onError={e => { e.target.style.display = 'none'; }}
               />
             ) : (

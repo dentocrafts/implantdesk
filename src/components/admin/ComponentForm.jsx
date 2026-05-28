@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { supabase } from '@/lib/supabase';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Upload, X, Plus } from 'lucide-react';
+import { Upload, X, Plus, Crosshair } from 'lucide-react';
 import { IMPLANT_SYSTEMS, ABUTMENT_TYPES, SCREW_TYPES, MATERIALS } from '@/lib/utils';
+import { parseImagePos, encodeImagePos } from '@/lib/imageUtils';
 import { useSettings } from '@/context/SettingsContext';
 import { toast } from 'sonner';
 
@@ -19,6 +20,94 @@ const ADD_NEW = '__add_new__';
 
 function uniq(arr) {
   return [...new Set(arr.filter(Boolean))];
+}
+
+// ── Focal point picker ────────────────────────────────────────────────────────
+
+function FocalPointPicker({ src, x, y, onChange }) {
+  const containerRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+
+  function calcPos(e) {
+    const rect = containerRef.current.getBoundingClientRect();
+    return {
+      x: Math.round(Math.max(0, Math.min(100, ((e.clientX - rect.left)  / rect.width)  * 100))),
+      y: Math.round(Math.max(0, Math.min(100, ((e.clientY - rect.top)   / rect.height) * 100))),
+    };
+  }
+
+  function handleMouseDown(e) {
+    e.preventDefault();
+    setDragging(true);
+    const p = calcPos(e);
+    onChange(p.x, p.y);
+  }
+
+  useEffect(() => {
+    if (!dragging) return;
+    const move = e => { const p = calcPos(e); onChange(p.x, p.y); };
+    const up   = () => setDragging(false);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup',  up);
+    return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
+  }, [dragging]); // eslint-disable-line
+
+  const isCenter = x === 50 && y === 50;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+          <Crosshair className="h-3.5 w-3.5" />
+          Crop Focus Point
+        </Label>
+        {!isCenter && (
+          <button
+            type="button"
+            onClick={() => onChange(50, 50)}
+            className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+          >
+            Reset to center
+          </button>
+        )}
+      </div>
+
+      {/* Interactive image — click or drag to set focal point */}
+      <div
+        ref={containerRef}
+        className="relative aspect-[3/2] rounded-md overflow-hidden cursor-crosshair border border-border select-none"
+        onMouseDown={handleMouseDown}
+      >
+        {/* Live preview: image with current focal point applied */}
+        <img
+          src={src}
+          alt="focal point preview"
+          draggable={false}
+          className="h-full w-full object-cover pointer-events-none"
+          style={{ objectPosition: `${x}% ${y}%` }}
+        />
+
+        {/* Subtle dark vignette so the crosshair is always visible */}
+        <div className="absolute inset-0 bg-black/15 pointer-events-none" />
+
+        {/* Crosshair marker */}
+        <div
+          className="absolute pointer-events-none"
+          style={{ left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)' }}
+        >
+          {/* outer ring */}
+          <div className="w-7 h-7 rounded-full border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,0.4)] flex items-center justify-center">
+            {/* inner dot */}
+            <div className="w-2 h-2 rounded-full bg-white shadow-sm" />
+          </div>
+        </div>
+
+        <p className="absolute bottom-1.5 left-0 right-0 text-center text-[10px] text-white/70 pointer-events-none">
+          Click or drag to move focus point
+        </p>
+      </div>
+    </div>
+  );
 }
 
 // ── Add-new dialog ───────────────────────────────────────────────────────────
@@ -67,9 +156,14 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
   const { settings, updateSettings } = useSettings();
 
   const [uploading, setUploading]     = useState(false);
-  const [imageUrl, setImageUrl]       = useState(component?.image_url || '');
   const [isActive, setIsActive]       = useState(component?.is_active ?? true);
   const [addingField, setAddingField] = useState(null); // 'system' | 'abutmentType' | 'material'
+
+  // Image base URL + focal point (encoded in the #pos= fragment on save)
+  const initImg = parseImagePos(component?.image_url || '');
+  const [imageBase, setImageBase]     = useState(initImg.src);
+  const [focalX, setFocalX]           = useState(initImg.x);
+  const [focalY, setFocalY]           = useState(initImg.y);
 
   const { register, handleSubmit, setValue, watch, formState: { errors, isSubmitting } } = useForm({
     defaultValues: {
@@ -109,7 +203,8 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
       const { error } = await supabase.storage.from('product-images').upload(path, file);
       if (error) throw error;
       const { data } = supabase.storage.from('product-images').getPublicUrl(path);
-      setImageUrl(data.publicUrl);
+      setImageBase(data.publicUrl);
+      setFocalX(50); setFocalY(50); // reset focal point for new image
       toast.success('Image uploaded');
     } catch (err) {
       toast.error('Image upload failed: ' + err.message);
@@ -129,7 +224,7 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
         platform_diameter:  Number(values.platform_diameter),
         price:              Number(values.price),
         stock_qty:          Number(values.stock_qty),
-        image_url:          imageUrl || null,
+        image_url:          encodeImagePos(imageBase, focalX, focalY) || null,
         is_active:          isActive,
       };
       await onSave(payload);
@@ -310,29 +405,43 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
           </div>
 
           {/* Image upload */}
-          <div className="sm:col-span-2 space-y-1.5">
+          <div className="sm:col-span-2 space-y-2">
             <Label>Product Image</Label>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-2 cursor-pointer rounded-md border border-dashed border-border px-4 py-2 hover:bg-accent transition-colors text-sm">
                 <Upload className="h-4 w-4" />
-                {uploading ? 'Uploading...' : 'Upload Image'}
+                {uploading ? 'Uploading...' : imageBase ? 'Replace Image' : 'Upload Image'}
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploading} />
               </label>
-              {imageUrl && (
-                <div className="flex items-center gap-2">
-                  <img src={imageUrl} alt="Preview" className="h-10 w-10 rounded object-cover border border-border" />
-                  <button type="button" onClick={() => setImageUrl('')} className="text-destructive hover:opacity-80">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
+              {imageBase && (
+                <button
+                  type="button"
+                  onClick={() => { setImageBase(''); setFocalX(50); setFocalY(50); }}
+                  className="flex items-center gap-1 text-xs text-destructive hover:opacity-80"
+                >
+                  <X className="h-3.5 w-3.5" /> Remove
+                </button>
               )}
             </div>
             <Input
               placeholder="Or paste image URL…"
-              value={imageUrl}
-              onChange={e => setImageUrl(e.target.value)}
-              className="mt-1"
+              value={imageBase}
+              onChange={e => {
+                const parsed = parseImagePos(e.target.value);
+                setImageBase(parsed.src);
+                setFocalX(parsed.x);
+                setFocalY(parsed.y);
+              }}
             />
+            {/* Focal point picker — only shown when an image is set */}
+            {imageBase && (
+              <FocalPointPicker
+                src={imageBase}
+                x={focalX}
+                y={focalY}
+                onChange={(x, y) => { setFocalX(x); setFocalY(y); }}
+              />
+            )}
           </div>
 
           {/* Active toggle */}

@@ -7,10 +7,12 @@ import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn, formatCurrency, getStockStatus, SYSTEM_COLORS } from '@/lib/utils';
+import { parseImagePos } from '@/lib/imageUtils';
 import { toast } from 'sonner';
 
 export default function ComponentCard({ component, onViewDetail }) {
   const stock = getStockStatus(component.stock_qty);
+  const { src: imgSrc, x: imgX, y: imgY } = parseImagePos(component.image_url);
   const systemColor = SYSTEM_COLORS[component.system] || 'bg-slate-500/20 text-slate-300 border-slate-500/30';
   const { addItem } = useDispatchNote();
   const { settings } = useSettings();
@@ -29,15 +31,16 @@ export default function ComponentCard({ component, onViewDetail }) {
     >
       {/* Image */}
       <div className="relative aspect-[3/2] bg-muted overflow-hidden">
-        {component.image_url ? (
+        {imgSrc ? (
           <img
-            src={component.image_url}
+            src={imgSrc}
             alt={component.name}
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            style={{ objectPosition: `${imgX}% ${imgY}%` }}
             onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }}
           />
         ) : null}
-        <div className={component.image_url ? 'hidden' : 'block h-full w-full'}>
+        <div className={imgSrc ? 'hidden' : 'block h-full w-full'}>
           <DentalPlaceholder />
         </div>
 
