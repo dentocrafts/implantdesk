@@ -10,6 +10,11 @@ export const SETTINGS_DEFAULTS = {
   lowStockThreshold: 5,
   waStatusText: 'Pending Dispatch',
   showPricing: true,
+  // User-added catalog options
+  customSystems: [],
+  customAbutmentTypes: [],
+  customScrewTypes: [],
+  customMaterials: [],
   waFields: {
     caseId: true,
     patientName: true,
