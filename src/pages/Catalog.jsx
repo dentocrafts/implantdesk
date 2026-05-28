@@ -35,19 +35,22 @@ export default function Catalog() {
   const { data: components, isLoading } = useComponents({ ...filters, category: 'component' });
   const { data: filterOptions } = useFilterOptions('component');
 
-  // Strip out any values the user has hidden in Settings → Catalog Options
+  // Strip out any values the user has hidden or deleted in Settings → Catalog Options
   const visibleFilterOptions = useMemo(() => {
     if (!filterOptions) return filterOptions;
-    const hidSys  = settings.hiddenSystems       || [];
-    const hidType = settings.hiddenAbutmentTypes  || [];
-    const hidMat  = settings.hiddenMaterials      || [];
+    const hidSys  = settings.hiddenSystems        || [];
+    const hidType = settings.hiddenAbutmentTypes   || [];
+    const hidMat  = settings.hiddenMaterials       || [];
+    const delSys  = settings.deletedSystems        || [];
+    const delType = settings.deletedAbutmentTypes  || [];
+    const delMat  = settings.deletedMaterials      || [];
     return {
       ...filterOptions,
-      systems:      filterOptions.systems.filter(s => !hidSys.includes(s)),
-      abutmentTypes: filterOptions.abutmentTypes.filter(t => !hidType.includes(t)),
-      materials:    filterOptions.materials.filter(m => !hidMat.includes(m)),
+      systems:       filterOptions.systems.filter(s       => !hidSys.includes(s)  && !delSys.includes(s)),
+      abutmentTypes: filterOptions.abutmentTypes.filter(t => !hidType.includes(t) && !delType.includes(t)),
+      materials:     filterOptions.materials.filter(m     => !hidMat.includes(m)  && !delMat.includes(m)),
     };
-  }, [filterOptions, settings.hiddenSystems, settings.hiddenAbutmentTypes, settings.hiddenMaterials]);
+  }, [filterOptions, settings.hiddenSystems, settings.hiddenAbutmentTypes, settings.hiddenMaterials, settings.deletedSystems, settings.deletedAbutmentTypes, settings.deletedMaterials]);
 
   function handleClearFilters() {
     setFilters(f => ({

@@ -22,6 +22,11 @@ export const SETTINGS_DEFAULTS = {
   hiddenAbutmentTypes: [],
   hiddenScrewTypes: [],
   hiddenMaterials: [],
+  // Built-in options the user has permanently deleted (removed from all dropdowns and filters)
+  deletedSystems: [],
+  deletedAbutmentTypes: [],
+  deletedScrewTypes: [],
+  deletedMaterials: [],
   waFields: {
     caseId: true,
     patientName: true,

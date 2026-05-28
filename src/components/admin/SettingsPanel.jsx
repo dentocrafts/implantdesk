@@ -42,112 +42,125 @@ const THEME_OPTIONS = [
 ];
 
 // ── Catalog option list (manage types / systems / materials) ─────────────────
-function CatalogOptionList({ label, builtIn, custom, hidden, onToggleHidden, onDeleteCustom, colors, onColorChange }) {
-  const hasItems = builtIn.length > 0 || custom.length > 0;
-  const showColors = !!onColorChange;
+function CatalogOptionList({ label, builtIn, custom, hidden, deleted = [], onToggleHidden, onDeleteBuiltIn, onRestoreBuiltIn, onDeleteCustom, colors, onColorChange }) {
+  const activeBuiltIn = builtIn.filter(item => !deleted.includes(item));
+  const hasItems      = activeBuiltIn.length > 0 || custom.length > 0;
+  const showColors    = !!onColorChange;
+
+  function ColorSwatch({ item }) {
+    const hex = colors?.[item];
+    return (
+      <span className="flex items-center gap-1 shrink-0">
+        <label className="relative cursor-pointer" title="Pick colour">
+          <span
+            className="block w-4 h-4 rounded-full border border-border shadow-sm transition-transform hover:scale-110"
+            style={{ backgroundColor: hex || '#94a3b8' }}
+          />
+          <input
+            type="color"
+            value={hex || '#94a3b8'}
+            onChange={e => onColorChange(item, e.target.value)}
+            className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+          />
+        </label>
+        {hex && (
+          <button
+            type="button"
+            onClick={() => onColorChange(item, null)}
+            title="Reset to default colour"
+            className="text-muted-foreground hover:text-foreground transition-colors leading-none"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </span>
+    );
+  }
 
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-      {!hasItems && <p className="text-xs text-muted-foreground italic">No options.</p>}
+      {!hasItems && deleted.length === 0 && <p className="text-xs text-muted-foreground italic">No options.</p>}
       <div className="rounded-md border border-border divide-y divide-border">
-        {builtIn.map(item => {
+
+        {/* Active built-in items */}
+        {activeBuiltIn.map(item => {
           const isHidden = hidden.includes(item);
-          const hex      = colors?.[item];
           return (
-            <div key={item} className={cn('flex items-center justify-between px-3 py-2 text-sm', isHidden && 'opacity-50')}>
+            <div key={item} className={cn('flex items-center justify-between px-3 py-2 text-sm', isHidden && 'opacity-60')}>
               <span className="flex items-center gap-2">
-                {showColors && (
-                  <span className="flex items-center gap-1 shrink-0">
-                    {/* Colour swatch — clicking opens native colour picker */}
-                    <label className="relative cursor-pointer" title="Pick colour">
-                      <span
-                        className="block w-4 h-4 rounded-full border border-border shadow-sm transition-transform hover:scale-110"
-                        style={{ backgroundColor: hex || '#94a3b8' }}
-                      />
-                      <input
-                        type="color"
-                        value={hex || '#94a3b8'}
-                        onChange={e => onColorChange(item, e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                      />
-                    </label>
-                    {/* Reset button — only visible when a custom colour is stored */}
-                    {hex && (
-                      <button
-                        type="button"
-                        onClick={() => onColorChange(item, null)}
-                        title="Reset to default colour"
-                        className="text-muted-foreground hover:text-foreground transition-colors leading-none"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </span>
-                )}
+                {showColors && <ColorSwatch item={item} />}
                 <span className={cn(isHidden && 'line-through text-muted-foreground')}>{item}</span>
               </span>
-              <button
-                type="button"
-                onClick={() => onToggleHidden(item)}
-                title={isHidden ? 'Show in dropdowns' : 'Hide from dropdowns'}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {isHidden
-                  ? <><Eye     className="h-3.5 w-3.5" /> Show</>
-                  : <><EyeOff className="h-3.5 w-3.5" /> Hide</>
-                }
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onToggleHidden(item)}
+                  title={isHidden ? 'Show in dropdowns' : 'Hide from dropdowns'}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {isHidden
+                    ? <><Eye     className="h-3.5 w-3.5" /> Show</>
+                    : <><EyeOff className="h-3.5 w-3.5" /> Hide</>
+                  }
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDeleteBuiltIn(item)}
+                  title="Delete — removes from all dropdowns and filters"
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           );
         })}
-        {custom.map(item => {
-          const hex = colors?.[item];
-          return (
-            <div key={item} className="flex items-center justify-between px-3 py-2 text-sm">
-              <span className="flex items-center gap-2">
-                {showColors && (
-                  <span className="flex items-center gap-1 shrink-0">
-                    <label className="relative cursor-pointer" title="Pick colour">
-                      <span
-                        className="block w-4 h-4 rounded-full border border-border shadow-sm transition-transform hover:scale-110"
-                        style={{ backgroundColor: hex || '#94a3b8' }}
-                      />
-                      <input
-                        type="color"
-                        value={hex || '#94a3b8'}
-                        onChange={e => onColorChange(item, e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                      />
-                    </label>
-                    {hex && (
-                      <button
-                        type="button"
-                        onClick={() => onColorChange(item, null)}
-                        title="Reset to default colour"
-                        className="text-muted-foreground hover:text-foreground transition-colors leading-none"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  {item}
-                  <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">custom</Badge>
-                </span>
+
+        {/* Custom items */}
+        {custom.map(item => (
+          <div key={item} className="flex items-center justify-between px-3 py-2 text-sm">
+            <span className="flex items-center gap-2">
+              {showColors && <ColorSwatch item={item} />}
+              <span className="flex items-center gap-1.5">
+                {item}
+                <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">custom</Badge>
               </span>
-              <button
-                type="button"
-                onClick={() => onDeleteCustom(item)}
-                title="Delete this option"
-                className="text-destructive hover:opacity-70 transition-opacity"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
+            </span>
+            <button
+              type="button"
+              onClick={() => onDeleteCustom(item)}
+              title="Delete this option"
+              className="text-muted-foreground hover:text-destructive transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ))}
+
+        {/* Deleted built-ins — collapsed at bottom with restore option */}
+        {deleted.length > 0 && (
+          <>
+            <div className="px-3 py-1.5 bg-muted/50">
+              <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+                {deleted.length} deleted
+              </p>
             </div>
-          );
-        })}
+            {deleted.map(item => (
+              <div key={item} className="flex items-center justify-between px-3 py-2 text-sm opacity-50">
+                <span className="line-through text-muted-foreground">{item}</span>
+                <button
+                  type="button"
+                  onClick={() => onRestoreBuiltIn(item)}
+                  title="Restore this option"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Restore
+                </button>
+              </div>
+            ))}
+          </>
+        )}
       </div>
     </div>
   );
@@ -191,6 +204,22 @@ export default function SettingsPanel({ isAdmin = true }) {
     updateSettings({ [customKey]: next });
     setDraft(d => ({ ...d, [customKey]: next }));
     toast.success(`"${value}" removed`);
+  }
+
+  function deleteBuiltIn(deletedKey, hiddenKey, value) {
+    const nextDeleted = [...(settings[deletedKey] || []), value];
+    // Remove from hidden list too — no need to hide what's already deleted
+    const nextHidden  = (settings[hiddenKey]  || []).filter(v => v !== value);
+    updateSettings({ [deletedKey]: nextDeleted, [hiddenKey]: nextHidden });
+    setDraft(d => ({ ...d, [deletedKey]: nextDeleted, [hiddenKey]: nextHidden }));
+    toast.success(`"${value}" deleted`);
+  }
+
+  function restoreBuiltIn(deletedKey, value) {
+    const next = (settings[deletedKey] || []).filter(v => v !== value);
+    updateSettings({ [deletedKey]: next });
+    setDraft(d => ({ ...d, [deletedKey]: next }));
+    toast.success(`"${value}" restored`);
   }
 
   // null hex = remove custom colour (revert to default)
@@ -437,9 +466,12 @@ export default function SettingsPanel({ isAdmin = true }) {
           builtIn={IMPLANT_SYSTEMS}
           custom={settings.customSystems || []}
           hidden={settings.hiddenSystems || []}
+          deleted={settings.deletedSystems || []}
           colors={settings.systemColors || {}}
           onColorChange={handleColorChange}
           onToggleHidden={v => toggleHidden('hiddenSystems', v)}
+          onDeleteBuiltIn={v => deleteBuiltIn('deletedSystems', 'hiddenSystems', v)}
+          onRestoreBuiltIn={v => restoreBuiltIn('deletedSystems', v)}
           onDeleteCustom={v => deleteCustom('customSystems', v)}
         />
         <CatalogOptionList
@@ -447,7 +479,10 @@ export default function SettingsPanel({ isAdmin = true }) {
           builtIn={ABUTMENT_TYPES}
           custom={settings.customAbutmentTypes || []}
           hidden={settings.hiddenAbutmentTypes || []}
+          deleted={settings.deletedAbutmentTypes || []}
           onToggleHidden={v => toggleHidden('hiddenAbutmentTypes', v)}
+          onDeleteBuiltIn={v => deleteBuiltIn('deletedAbutmentTypes', 'hiddenAbutmentTypes', v)}
+          onRestoreBuiltIn={v => restoreBuiltIn('deletedAbutmentTypes', v)}
           onDeleteCustom={v => deleteCustom('customAbutmentTypes', v)}
         />
         <CatalogOptionList
@@ -455,7 +490,10 @@ export default function SettingsPanel({ isAdmin = true }) {
           builtIn={SCREW_TYPES}
           custom={settings.customScrewTypes || []}
           hidden={settings.hiddenScrewTypes || []}
+          deleted={settings.deletedScrewTypes || []}
           onToggleHidden={v => toggleHidden('hiddenScrewTypes', v)}
+          onDeleteBuiltIn={v => deleteBuiltIn('deletedScrewTypes', 'hiddenScrewTypes', v)}
+          onRestoreBuiltIn={v => restoreBuiltIn('deletedScrewTypes', v)}
           onDeleteCustom={v => deleteCustom('customScrewTypes', v)}
         />
         <CatalogOptionList
@@ -463,7 +501,10 @@ export default function SettingsPanel({ isAdmin = true }) {
           builtIn={MATERIALS}
           custom={settings.customMaterials || []}
           hidden={settings.hiddenMaterials || []}
+          deleted={settings.deletedMaterials || []}
           onToggleHidden={v => toggleHidden('hiddenMaterials', v)}
+          onDeleteBuiltIn={v => deleteBuiltIn('deletedMaterials', 'hiddenMaterials', v)}
+          onRestoreBuiltIn={v => restoreBuiltIn('deletedMaterials', v)}
           onDeleteCustom={v => deleteCustom('customMaterials', v)}
         />
       </SettingSection>}
