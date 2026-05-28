@@ -122,19 +122,27 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
         {/* Gingival Height / Screw Length */}
         <div className="space-y-1.5">
           <Label htmlFor="gh">{isScrew ? 'Screw Length (mm)' : 'Gingival Height (mm)'} *</Label>
-          <Input id="gh" type="number" step="0.5" {...register('gingival_height_mm', { required: true })} placeholder={isScrew ? 'e.g. 10' : 'e.g. 2'} />
+          <Input id="gh" type="number" step="any" {...register('gingival_height_mm', { required: true })} placeholder={isScrew ? 'e.g. 10' : 'e.g. 2'} />
         </div>
 
         {/* Platform Diameter / Screw Diameter */}
         <div className="space-y-1.5">
           <Label htmlFor="pd">{isScrew ? 'Screw Diameter (mm)' : 'Platform Diameter (mm)'} *</Label>
-          <Input id="pd" type="number" step="0.1" {...register('platform_diameter', { required: true })} placeholder="e.g. 4.5" />
+          <Input id="pd" type="number" step="any" {...register('platform_diameter', { required: true })} placeholder="e.g. 4.5" />
         </div>
 
         {/* Component Code */}
         <div className="space-y-1.5">
           <Label htmlFor="cc">Component Code *</Label>
-          <Input id="cc" {...register('component_code', { required: true })} placeholder="Internal SKU" />
+          <Input
+            id="cc"
+            className="uppercase"
+            placeholder="Internal SKU"
+            {...register('component_code', {
+              required: true,
+              setValueAs: v => v ? v.toUpperCase() : v,
+            })}
+          />
         </div>
 
         {/* Manufacturer Code */}
