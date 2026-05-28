@@ -400,6 +400,7 @@ export default function ComponentManager() {
                       </TableCell>
                       <TableCell>
                         <Input
+                          key={c.stock_qty}
                           type="number"
                           defaultValue={c.stock_qty}
                           className="h-7 w-16 text-xs"
