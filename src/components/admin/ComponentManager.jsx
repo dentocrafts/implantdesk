@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, FileSpreadsheet, Download, X } from 'lucide-react';
 import ScrewIcon from '@/components/common/ScrewIcon';
+import CopyableCode from '@/components/common/CopyableCode';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ComponentForm from './ComponentForm';
 import ImportExcel from './ImportExcel';
 import {
@@ -383,8 +385,15 @@ export default function ComponentManager() {
                         />
                       </TableCell>
 
-                      <TableCell className="font-medium max-w-[180px]">
-                        <span className="line-clamp-1 text-sm">{c.name}</span>
+                      <TableCell className="font-medium text-sm max-w-[200px]">
+                        <TooltipProvider delayDuration={300}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="line-clamp-1 block cursor-default">{c.name}</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs text-xs">{c.name}</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
                         <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', sysClass)} style={sysStyle}>
@@ -394,8 +403,8 @@ export default function ComponentManager() {
                       <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
                         {c.abutment_type || '—'}
                       </TableCell>
-                      <TableCell className="hidden sm:table-cell font-mono text-xs text-muted-foreground">
-                        {c.component_code}
+                      <TableCell className="hidden sm:table-cell">
+                        <CopyableCode code={c.component_code} />
                       </TableCell>
                       <TableCell className="text-primary font-medium text-sm">
                         {formatCurrency(c.price)}
