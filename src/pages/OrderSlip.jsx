@@ -54,7 +54,7 @@ function DispatchComponentModal({ component, open, onClose, onAdd, currentQty })
           <div>
             <h2 className="text-lg font-bold leading-tight">{component.name}</h2>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', sysColor)}>
+              <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', sysClass)} style={sysStyle}>
                 {component.system}
               </span>
               <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
@@ -113,6 +113,8 @@ function DispatchComponentModal({ component, open, onClose, onAdd, currentQty })
 
 // ── Compact catalog card ───────────────────────────────────────────────
 function CatalogCard({ component, onAdd, onViewDetail, dispatchQty }) {
+  const { settings } = useSettings();
+  const { className: sysClass, style: sysStyle } = getSystemStyle(component.system, settings.systemColors);
   return (
     <div
       className="flex items-center gap-2.5 p-2 rounded-lg border border-border bg-card hover:border-primary/30 hover:bg-accent/30 transition-colors cursor-pointer"
