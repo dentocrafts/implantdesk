@@ -14,7 +14,8 @@ import {
   useAllComponents, useCreateComponent, useUpdateComponent,
   useDeleteComponent, useDeleteComponents, useUpdateComponents,
 } from '@/hooks/useComponents';
-import { formatCurrency, SYSTEM_COLORS, cn } from '@/lib/utils';
+import { formatCurrency, getSystemStyle, cn } from '@/lib/utils';
+import { useSettings } from '@/context/SettingsContext';
 import { toast } from 'sonner';
 
 export default function ComponentManager() {
@@ -24,6 +25,7 @@ export default function ComponentManager() {
   const deleteComponent  = useDeleteComponent();
   const deleteComponents = useDeleteComponents();
   const updateComponents = useUpdateComponents();
+  const { settings } = useSettings();
 
   const [search,         setSearch]         = useState('');
   const [formOpen,       setFormOpen]       = useState(false);
@@ -360,7 +362,7 @@ export default function ComponentManager() {
                   </TableRow>
                 ))
               : filtered.map((c, idx) => {
-                  const systemColor = SYSTEM_COLORS[c.system] || '';
+                  const { className: sysClass, style: sysStyle } = getSystemStyle(c.system, settings.systemColors);
                   const isChecked   = selected.has(c.id);
                   return (
                     <TableRow
@@ -385,7 +387,7 @@ export default function ComponentManager() {
                         <span className="line-clamp-1 text-sm">{c.name}</span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">
-                        <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', systemColor)}>
+                        <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', sysClass)} style={sysStyle}>
                           {c.system}
                         </span>
                       </TableCell>

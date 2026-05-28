@@ -6,16 +6,16 @@ import CopyableCode from '@/components/common/CopyableCode';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { cn, formatCurrency, getStockStatus, SYSTEM_COLORS } from '@/lib/utils';
+import { cn, formatCurrency, getStockStatus, getSystemStyle } from '@/lib/utils';
 import { parseImagePos } from '@/lib/imageUtils';
 import { toast } from 'sonner';
 
 export default function ComponentCard({ component, onViewDetail }) {
   const stock = getStockStatus(component.stock_qty);
   const { src: imgSrc, x: imgX, y: imgY } = parseImagePos(component.image_url);
-  const systemColor = SYSTEM_COLORS[component.system] || 'bg-slate-500/20 text-slate-300 border-slate-500/30';
   const { addItem } = useDispatchNote();
   const { settings } = useSettings();
+  const { className: sysClass, style: sysStyle } = getSystemStyle(component.system, settings.systemColors);
   const { canViewPricing } = usePermissions();
 
   function handleAddToDispatch(e) {
@@ -46,7 +46,7 @@ export default function ComponentCard({ component, onViewDetail }) {
 
         {/* System badge overlay */}
         <div className="absolute top-2 left-2">
-          <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', systemColor)}>
+          <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', sysClass)} style={sysStyle}>
             {component.system}
           </span>
         </div>

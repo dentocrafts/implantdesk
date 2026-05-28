@@ -15,7 +15,7 @@ import { useComponents } from '@/hooks/useComponents';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { SYSTEM_COLORS, cn, formatCurrency, getStockStatus, copyToClipboard } from '@/lib/utils';
+import { getSystemStyle, cn, formatCurrency, getStockStatus, copyToClipboard } from '@/lib/utils';
 import { toast } from 'sonner';
 
 function SlipNumber() {
@@ -30,7 +30,7 @@ function DispatchComponentModal({ component, open, onClose, onAdd, currentQty })
   const { canViewPricing } = usePermissions();
   if (!component) return null;
   const stock = getStockStatus(component.stock_qty);
-  const sysColor = SYSTEM_COLORS[component.system] || '';
+  const { className: sysClass, style: sysStyle } = getSystemStyle(component.system, settings.systemColors);
 
   function handleAdd() {
     onAdd(component, qty);
@@ -130,7 +130,7 @@ function CatalogCard({ component, onAdd, onViewDetail, dispatchQty }) {
       <div className="flex-1 min-w-0">
         <div className="text-xs font-semibold line-clamp-1 leading-tight">{component.name}</div>
         <div className="flex items-center gap-1 mt-0.5 flex-wrap">
-          <span className={cn('inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4', SYSTEM_COLORS[component.system] || '')}>
+          <span className={cn('inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4', sysClass)} style={sysStyle}>
             {component.system}
           </span>
           {component.category === 'screw' && (

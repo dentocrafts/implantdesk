@@ -10,6 +10,8 @@ export const SETTINGS_DEFAULTS = {
   lowStockThreshold: 5,
   waStatusText: 'Pending Dispatch',
   showPricing: true,
+  // Custom hex colours per system name, e.g. { Osstem: '#ff6600' }
+  systemColors: {},
   // User-added catalog options
   customSystems: [],
   customAbutmentTypes: [],

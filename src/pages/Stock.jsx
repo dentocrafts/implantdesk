@@ -23,7 +23,7 @@ import CopyableCode from '@/components/common/CopyableCode';
 import EmptyState from '@/components/common/EmptyState';
 import { useAllComponents } from '@/hooks/useComponents';
 import { useAllStockMovements, useLogStockMovement, useLogBatchStockMovements } from '@/hooks/useStock';
-import { formatCurrency, getStockStatus, SYSTEM_COLORS, cn } from '@/lib/utils';
+import { formatCurrency, getStockStatus, getSystemStyle, cn } from '@/lib/utils';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -159,7 +159,7 @@ function ComponentDetailModal({ component, open, onClose, onAction, isAdmin }) {
   const { settings } = useSettings();
   if (!component) return null;
   const stock = getStockStatus(component.stock_qty);
-  const sysColor = SYSTEM_COLORS[component.system] || '';
+  const { className: sysClass, style: sysStyle } = getSystemStyle(component.system, settings.systemColors);
   const { src: imgSrc, x: imgX, y: imgY } = parseImagePos(component.image_url);
 
   return (
@@ -174,7 +174,7 @@ function ComponentDetailModal({ component, open, onClose, onAction, isAdmin }) {
           <div>
             <h2 className="text-lg font-bold leading-tight">{component.name}</h2>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', sysColor)}>
+              <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', sysClass)} style={sysStyle}>
                 {component.system}
               </span>
               <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
@@ -240,6 +240,7 @@ export default function Stock() {
   const logBatch = useLogBatchStockMovements();
   const { isAdmin } = useAuth();
   const { canLogStock, canViewHistory } = usePermissions();
+  const { settings } = useSettings();
 
   const [search,            setSearch]            = useState('');
   const [dialog,            setDialog]            = useState(null);
@@ -501,7 +502,7 @@ export default function Stock() {
                       ))
                     : filtered.map((c, idx) => {
                         const stock    = getStockStatus(c.stock_qty);
-                        const sysColor = SYSTEM_COLORS[c.system] || '';
+                        const { className: sysClass, style: sysStyle } = getSystemStyle(c.system, settings.systemColors);
                         const isChecked = selected.has(c.id);
                         return (
                           <TableRow
@@ -538,7 +539,7 @@ export default function Stock() {
                             </TableCell>
                             <TableCell className="hidden md:table-cell">
                               <div className="flex flex-col gap-1">
-                                <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold w-fit', sysColor)}>
+                                <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold w-fit', sysClass)} style={sysStyle}>
                                   {c.system}
                                 </span>
                                 {c.category === 'screw' && (
@@ -627,11 +628,14 @@ export default function Stock() {
                             <CopyableCode code={m.implant_components?.component_code} />
                           </TableCell>
                           <TableCell className="hidden md:table-cell">
-                            {m.implant_components?.system && (
-                              <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', SYSTEM_COLORS[m.implant_components.system] || '')}>
-                                {m.implant_components.system}
-                              </span>
-                            )}
+                            {m.implant_components?.system && (() => {
+                              const { className: hSysClass, style: hSysStyle } = getSystemStyle(m.implant_components.system, settings.systemColors);
+                              return (
+                                <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold', hSysClass)} style={hSysStyle}>
+                                  {m.implant_components.system}
+                                </span>
+                              );
+                            })()}
                           </TableCell>
                           <TableCell>
                             <span className={cn('font-bold text-sm', cfg.color)}>

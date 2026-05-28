@@ -57,6 +57,29 @@ export const SYSTEM_COLORS = {
   BioHorizons: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };
 
+/**
+ * Returns { className, style } for a system colour badge.
+ * When the user has set a custom hex colour it uses inline CSS;
+ * otherwise it falls back to the hardcoded Tailwind class string.
+ */
+export function getSystemStyle(system, customColors = {}) {
+  const hex = customColors?.[system];
+  if (hex) {
+    return {
+      className: '',
+      style: {
+        backgroundColor: hex + '26',  // ~15 % opacity
+        borderColor:     hex + '40',  // ~25 % opacity
+        color:           hex,
+      },
+    };
+  }
+  return {
+    className: SYSTEM_COLORS[system] || 'bg-slate-500/20 text-slate-700 border-slate-200',
+    style: {},
+  };
+}
+
 export const IMPLANT_SYSTEMS = ['Straumann', 'Nobel Biocare', 'Osstem', 'MIS', 'BioHorizons'];
 export const ABUTMENT_TYPES = [
   'Straight',

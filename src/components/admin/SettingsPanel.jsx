@@ -42,8 +42,10 @@ const THEME_OPTIONS = [
 ];
 
 // ── Catalog option list (manage types / systems / materials) ─────────────────
-function CatalogOptionList({ label, builtIn, custom, hidden, onToggleHidden, onDeleteCustom }) {
+function CatalogOptionList({ label, builtIn, custom, hidden, onToggleHidden, onDeleteCustom, colors, onColorChange }) {
   const hasItems = builtIn.length > 0 || custom.length > 0;
+  const showColors = !!onColorChange;
+
   return (
     <div className="space-y-1.5">
       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
@@ -51,9 +53,40 @@ function CatalogOptionList({ label, builtIn, custom, hidden, onToggleHidden, onD
       <div className="rounded-md border border-border divide-y divide-border">
         {builtIn.map(item => {
           const isHidden = hidden.includes(item);
+          const hex      = colors?.[item];
           return (
             <div key={item} className={cn('flex items-center justify-between px-3 py-2 text-sm', isHidden && 'opacity-50')}>
-              <span className={cn(isHidden && 'line-through text-muted-foreground')}>{item}</span>
+              <span className="flex items-center gap-2">
+                {showColors && (
+                  <span className="flex items-center gap-1 shrink-0">
+                    {/* Colour swatch — clicking opens native colour picker */}
+                    <label className="relative cursor-pointer" title="Pick colour">
+                      <span
+                        className="block w-4 h-4 rounded-full border border-border shadow-sm transition-transform hover:scale-110"
+                        style={{ backgroundColor: hex || '#94a3b8' }}
+                      />
+                      <input
+                        type="color"
+                        value={hex || '#94a3b8'}
+                        onChange={e => onColorChange(item, e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                    </label>
+                    {/* Reset button — only visible when a custom colour is stored */}
+                    {hex && (
+                      <button
+                        type="button"
+                        onClick={() => onColorChange(item, null)}
+                        title="Reset to default colour"
+                        className="text-muted-foreground hover:text-foreground transition-colors leading-none"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </span>
+                )}
+                <span className={cn(isHidden && 'line-through text-muted-foreground')}>{item}</span>
+              </span>
               <button
                 type="button"
                 onClick={() => onToggleHidden(item)}
@@ -68,22 +101,53 @@ function CatalogOptionList({ label, builtIn, custom, hidden, onToggleHidden, onD
             </div>
           );
         })}
-        {custom.map(item => (
-          <div key={item} className="flex items-center justify-between px-3 py-2 text-sm">
-            <span className="flex items-center gap-1.5">
-              {item}
-              <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">custom</Badge>
-            </span>
-            <button
-              type="button"
-              onClick={() => onDeleteCustom(item)}
-              title="Delete this option"
-              className="text-destructive hover:opacity-70 transition-opacity"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ))}
+        {custom.map(item => {
+          const hex = colors?.[item];
+          return (
+            <div key={item} className="flex items-center justify-between px-3 py-2 text-sm">
+              <span className="flex items-center gap-2">
+                {showColors && (
+                  <span className="flex items-center gap-1 shrink-0">
+                    <label className="relative cursor-pointer" title="Pick colour">
+                      <span
+                        className="block w-4 h-4 rounded-full border border-border shadow-sm transition-transform hover:scale-110"
+                        style={{ backgroundColor: hex || '#94a3b8' }}
+                      />
+                      <input
+                        type="color"
+                        value={hex || '#94a3b8'}
+                        onChange={e => onColorChange(item, e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                    </label>
+                    {hex && (
+                      <button
+                        type="button"
+                        onClick={() => onColorChange(item, null)}
+                        title="Reset to default colour"
+                        className="text-muted-foreground hover:text-foreground transition-colors leading-none"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5">
+                  {item}
+                  <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">custom</Badge>
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => onDeleteCustom(item)}
+                title="Delete this option"
+                className="text-destructive hover:opacity-70 transition-opacity"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -127,6 +191,18 @@ export default function SettingsPanel({ isAdmin = true }) {
     updateSettings({ [customKey]: next });
     setDraft(d => ({ ...d, [customKey]: next }));
     toast.success(`"${value}" removed`);
+  }
+
+  // null hex = remove custom colour (revert to default)
+  function handleColorChange(system, hex) {
+    const next = { ...(settings.systemColors || {}) };
+    if (hex) {
+      next[system] = hex;
+    } else {
+      delete next[system];
+    }
+    updateSettings({ systemColors: next });
+    setDraft(d => ({ ...d, systemColors: next }));
   }
 
   // Logo upload — saves immediately (no Save button needed)
@@ -361,6 +437,8 @@ export default function SettingsPanel({ isAdmin = true }) {
           builtIn={IMPLANT_SYSTEMS}
           custom={settings.customSystems || []}
           hidden={settings.hiddenSystems || []}
+          colors={settings.systemColors || {}}
+          onColorChange={handleColorChange}
           onToggleHidden={v => toggleHidden('hiddenSystems', v)}
           onDeleteCustom={v => deleteCustom('customSystems', v)}
         />

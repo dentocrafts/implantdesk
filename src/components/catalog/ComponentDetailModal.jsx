@@ -11,7 +11,7 @@ import CopyableCode from '@/components/common/CopyableCode';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { cn, formatCurrency, getStockStatus, SYSTEM_COLORS } from '@/lib/utils';
+import { cn, formatCurrency, getStockStatus, getSystemStyle } from '@/lib/utils';
 import { parseImagePos } from '@/lib/imageUtils';
 import { toast } from 'sonner';
 
@@ -34,7 +34,7 @@ export default function ComponentDetailModal({ component, open, onClose }) {
   if (!component) return null;
 
   const stock = getStockStatus(component.stock_qty);
-  const systemColor = SYSTEM_COLORS[component.system] || 'bg-slate-500/20 text-slate-300 border-slate-500/30';
+  const { className: sysClass, style: sysStyle } = getSystemStyle(component.system, settings.systemColors);
   const { src: imgSrc, x: imgX, y: imgY } = parseImagePos(component.image_url);
 
   function handleAddToDispatch() {
@@ -69,7 +69,7 @@ export default function ComponentDetailModal({ component, open, onClose }) {
                 <DialogTitle className="text-xl leading-tight pr-8">{component.name}</DialogTitle>
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-2">
-                <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', systemColor)}>
+                <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold', sysClass)} style={sysStyle}>
                   {component.system}
                 </span>
                 <Badge variant={stock.variant} className="text-xs">{stock.label}</Badge>
