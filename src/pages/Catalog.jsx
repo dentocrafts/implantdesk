@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useComponents, useFilterOptions } from '@/hooks/useComponents';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useSettings } from '@/context/SettingsContext';
 
 export default function Catalog() {
   const { canExportCSV } = usePermissions();
@@ -30,8 +31,23 @@ export default function Catalog() {
     );
   }, [filters]);
 
+  const { settings } = useSettings();
   const { data: components, isLoading } = useComponents({ ...filters, category: 'component' });
   const { data: filterOptions } = useFilterOptions('component');
+
+  // Strip out any values the user has hidden in Settings → Catalog Options
+  const visibleFilterOptions = useMemo(() => {
+    if (!filterOptions) return filterOptions;
+    const hidSys  = settings.hiddenSystems       || [];
+    const hidType = settings.hiddenAbutmentTypes  || [];
+    const hidMat  = settings.hiddenMaterials      || [];
+    return {
+      ...filterOptions,
+      systems:      filterOptions.systems.filter(s => !hidSys.includes(s)),
+      abutmentTypes: filterOptions.abutmentTypes.filter(t => !hidType.includes(t)),
+      materials:    filterOptions.materials.filter(m => !hidMat.includes(m)),
+    };
+  }, [filterOptions, settings.hiddenSystems, settings.hiddenAbutmentTypes, settings.hiddenMaterials]);
 
   function handleClearFilters() {
     setFilters(f => ({
@@ -124,7 +140,7 @@ export default function Catalog() {
             onChange={setFilters}
             activeCount={activeFilterCount}
             category="component"
-            options={filterOptions}
+            options={visibleFilterOptions}
           />
         </div>
 

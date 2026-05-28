@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useComponents, useFilterOptions } from '@/hooks/useComponents';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useSettings } from '@/context/SettingsContext';
 
 export default function Screws() {
   const { canExportCSV } = usePermissions();
@@ -29,8 +30,23 @@ export default function Screws() {
     filters.platformDiameters.length
   ), [filters]);
 
+  const { settings } = useSettings();
   const { data: screws, isLoading } = useComponents({ ...filters, category: 'screw' });
   const { data: filterOptions } = useFilterOptions('screw');
+
+  // Strip out any values the user has hidden in Settings → Catalog Options
+  const visibleFilterOptions = useMemo(() => {
+    if (!filterOptions) return filterOptions;
+    const hidSys  = settings.hiddenSystems    || [];
+    const hidType = settings.hiddenScrewTypes || [];   // screws use hiddenScrewTypes
+    const hidMat  = settings.hiddenMaterials  || [];
+    return {
+      ...filterOptions,
+      systems:      filterOptions.systems.filter(s => !hidSys.includes(s)),
+      abutmentTypes: filterOptions.abutmentTypes.filter(t => !hidType.includes(t)),
+      materials:    filterOptions.materials.filter(m => !hidMat.includes(m)),
+    };
+  }, [filterOptions, settings.hiddenSystems, settings.hiddenScrewTypes, settings.hiddenMaterials]);
 
   function handleClearFilters() {
     setFilters(f => ({
@@ -125,7 +141,7 @@ export default function Screws() {
             onChange={setFilters}
             activeCount={activeFilterCount}
             category="screw"
-            options={filterOptions}
+            options={visibleFilterOptions}
           />
         </div>
         <div className="flex-1 min-w-0">
