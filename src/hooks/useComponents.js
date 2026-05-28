@@ -101,6 +101,11 @@ export function useComponent(id) {
   });
 }
 
+function invalidateAll(qc) {
+  qc.invalidateQueries({ queryKey: ['components'] });
+  qc.invalidateQueries({ queryKey: ['filter-options'] });
+}
+
 export function useCreateComponent() {
   const qc = useQueryClient();
   return useMutation({
@@ -113,7 +118,7 @@ export function useCreateComponent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+    onSuccess: () => invalidateAll(qc),
   });
 }
 
@@ -130,7 +135,7 @@ export function useUpdateComponent() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+    onSuccess: () => invalidateAll(qc),
   });
 }
 
@@ -141,7 +146,7 @@ export function useDeleteComponent() {
       const { error } = await supabase.from('implant_components').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+    onSuccess: () => invalidateAll(qc),
   });
 }
 
@@ -152,7 +157,7 @@ export function useDeleteComponents() {
       const { error } = await supabase.from('implant_components').delete().in('id', ids);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+    onSuccess: () => invalidateAll(qc),
   });
 }
 
@@ -163,6 +168,6 @@ export function useUpdateComponents() {
       const { error } = await supabase.from('implant_components').update(updates).in('id', ids);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['components'] }),
+    onSuccess: () => invalidateAll(qc),
   });
 }
