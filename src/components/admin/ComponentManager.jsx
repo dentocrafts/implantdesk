@@ -483,7 +483,7 @@ export default function ComponentManager() {
         </DialogContent>
       </Dialog>
 
-      <ImportExcel open={importOpen} onClose={() => setImportOpen(false)} />
+      <ImportExcel open={importOpen} onClose={() => setImportOpen(false)} category={activeCategory} />
     </div>
   );
 }
