@@ -8,7 +8,7 @@ export function useStockMovements(componentId) {
     queryFn: async () => {
       let query = supabase
         .from('stock_movements')
-        .select('*, implant_components(name, component_code, system)')
+        .select('*, implant_components(name, component_code, system, category)')
         .order('created_at', { ascending: false })
         .limit(200);
       if (componentId) query = query.eq('component_id', componentId);
@@ -25,7 +25,7 @@ export function useAllStockMovements() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('stock_movements')
-        .select('*, implant_components(name, component_code, system)')
+        .select('*, implant_components(name, component_code, system, category)')
         .order('created_at', { ascending: false })
         .limit(300);
       if (error) throw error;

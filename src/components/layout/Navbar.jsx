@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Package, Settings, LogOut, ChevronDown, Stethoscope } from 'lucide-react';
+import { Package, Settings, LogOut, ChevronDown, Stethoscope, History } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
@@ -16,7 +16,7 @@ export default function Navbar() {
   const { user, profile, signOut, isAdmin } = useAuth();
   const { totalItems } = useDispatchNote();
   const { settings } = useSettings();
-  const { canManageComponents } = usePermissions();
+  const { canManageComponents, canViewHistory } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -28,11 +28,12 @@ export default function Navbar() {
     .slice(0, 2) || 'DR';
 
   const navLinks = [
-    { to: '/catalog', label: 'Catalog' },
-    { to: '/screws', label: 'Screws' },
-    { to: '/stock', label: 'Stock' },
-    { to: '/slip', label: 'Dispatch' },
-    { to: '/admin', label: (isAdmin || canManageComponents) ? 'Admin' : 'Settings' },
+    { to: '/catalog',  label: 'Catalog'  },
+    { to: '/screws',   label: 'Screws'   },
+    { to: '/stock',    label: 'Stock'    },
+    { to: '/slip',     label: 'Dispatch' },
+    ...(canViewHistory ? [{ to: '/history', label: 'History' }] : []),
+    { to: '/admin',    label: (isAdmin || canManageComponents) ? 'Admin' : 'Settings' },
   ];
 
   return (
@@ -103,6 +104,12 @@ export default function Navbar() {
                   <Package className="h-4 w-4 mr-2" />
                   Stock Management
                 </DropdownMenuItem>
+                {canViewHistory && (
+                  <DropdownMenuItem onClick={() => navigate('/history')}>
+                    <History className="h-4 w-4 mr-2" />
+                    Movement History
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/admin?tab=settings')}>
                   <Settings className="h-4 w-4 mr-2" />
                   Settings

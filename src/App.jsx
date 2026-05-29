@@ -9,6 +9,7 @@ import Screws from '@/pages/Screws';
 import Stock from '@/pages/Stock';
 import Admin from '@/pages/Admin';
 import OrderSlip from '@/pages/OrderSlip';
+import HistoryPage from '@/pages/History';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -47,6 +48,7 @@ function AppRoutes() {
       <Route path="/stock" element={<ProtectedRoute><Stock /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
       <Route path="/slip" element={<ProtectedRoute><OrderSlip /></ProtectedRoute>} />
+      <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
       <Route path="/" element={<Navigate to="/catalog" replace />} />
       <Route path="*" element={<Navigate to="/catalog" replace />} />
     </Routes>
