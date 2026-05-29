@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react';
-import { History, Search, Truck, ArrowUpRight, Undo2, PackagePlus, X, Download } from 'lucide-react';
+import { History, Search, Truck, ArrowUpRight, Undo2, PackagePlus, X, Download, Calendar, Clock, Hash, FileText, User, Stethoscope } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
 import CopyableCode from '@/components/common/CopyableCode';
 import EmptyState from '@/components/common/EmptyState';
 import { useAllStockMovements } from '@/hooks/useStock';
@@ -113,13 +115,146 @@ const FILTERS = [
   { key: 'received', label: 'Received'   },
 ];
 
+// ── Detail dialog ─────────────────────────────────────────────────────
+function MovementDetailDialog({ movement: m, open, onClose }) {
+  const { settings } = useSettings();
+  if (!m) return null;
+
+  const disp = isDispatch(m);
+  const cfg  = cfgFor(m);
+  const Icon = cfg.icon;
+  const info = disp ? parseDispatchInfo(m.notes) : {};
+  const date = new Date(m.created_at);
+
+  const { className: sysClass, style: sysStyle } =
+    getSystemStyle(m.implant_components?.system ?? '', settings.systemColors);
+
+  function DetailRow({ icon: RowIcon, label, children }) {
+    return (
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 mt-0.5">
+          <RowIcon className="h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-0.5">{label}</div>
+          <div className="text-sm">{children}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className={cn(
+              'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold border',
+              cfg.bg, cfg.border, cfg.color,
+            )}>
+              <Icon className="h-3.5 w-3.5" />
+              {cfg.label}
+            </span>
+            <span className="text-sm font-normal text-muted-foreground">movement</span>
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Component block */}
+        <div className={cn('rounded-lg border px-3 py-2.5 space-y-1', cfg.bg, cfg.border)}>
+          <p className="font-semibold text-sm leading-snug line-clamp-2">
+            {m.implant_components?.name || '—'}
+          </p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {m.implant_components?.system && (
+              <span className={cn('inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4', sysClass)} style={sysStyle}>
+                {m.implant_components.system}
+              </span>
+            )}
+            {m.implant_components?.category === 'screw' && (
+              <span className="inline-flex items-center rounded-full border px-1.5 py-0 text-[10px] font-semibold leading-4 bg-violet-50 text-violet-700 border-violet-200">
+                Screw
+              </span>
+            )}
+            <CopyableCode code={m.implant_components?.component_code} className="text-[10px]" />
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Details grid */}
+        <div className="space-y-3">
+
+          {/* Quantity */}
+          <DetailRow icon={Hash} label="Quantity">
+            <span className={cn('font-bold', cfg.qtyColor)}>
+              {cfg.noStockImpact ? `${m.quantity} units` : `${cfg.sign}${m.quantity} units`}
+            </span>
+            <span className="text-xs text-muted-foreground ml-2">
+              {cfg.noStockImpact
+                ? '(order log — no stock change)'
+                : disp
+                  ? '(stock reduced via dispatch slip)'
+                  : m.type === 'out'
+                    ? '(stock reduced)'
+                    : '(stock increased)'}
+            </span>
+          </DetailRow>
+
+          {/* Date & time */}
+          <DetailRow icon={Calendar} label="Date">
+            <span>{format(date, 'EEEE, d MMMM yyyy')}</span>
+          </DetailRow>
+          <DetailRow icon={Clock} label="Time">
+            <span>{format(date, 'h:mm a')}</span>
+            {isToday(date) && (
+              <span className="text-xs text-muted-foreground ml-2">
+                ({formatDistanceToNow(date, { addSuffix: true })})
+              </span>
+            )}
+          </DetailRow>
+
+          {/* Dispatch-specific fields */}
+          {disp && (
+            <>
+              {info.caseId && (
+                <DetailRow icon={FileText} label="Case ID">
+                  <span className="font-mono font-semibold">{info.caseId}</span>
+                </DetailRow>
+              )}
+              {info.doctor && (
+                <DetailRow icon={Stethoscope} label="Doctor">
+                  <span>{info.doctor}</span>
+                </DetailRow>
+              )}
+              {info.patient && (
+                <DetailRow icon={User} label="Patient">
+                  <span>{info.patient}</span>
+                </DetailRow>
+              )}
+            </>
+          )}
+
+          {/* Regular notes */}
+          {!disp && m.notes && (
+            <DetailRow icon={FileText} label="Notes">
+              <span className="text-muted-foreground">{m.notes}</span>
+            </DetailRow>
+          )}
+
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────
 export default function HistoryPage() {
   const { data: movements, isLoading } = useAllStockMovements();
   const { settings } = useSettings();
   const { canViewHistory } = usePermissions();
-  const [search,     setSearch]     = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [search,            setSearch]           = useState('');
+  const [typeFilter,        setTypeFilter]       = useState('all');
+  const [selectedMovement,  setSelectedMovement] = useState(null);
 
   const filtered = useMemo(() => {
     if (!movements) return [];
@@ -307,7 +442,7 @@ export default function HistoryPage() {
                     const date = new Date(m.created_at);
 
                     return (
-                      <div key={m.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors">
+                      <div key={m.id} onClick={() => setSelectedMovement(m)} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer">
 
                         {/* Type badge */}
                         <div className="shrink-0 w-[108px]">
@@ -401,6 +536,12 @@ export default function HistoryPage() {
         )}
 
       </div>
+
+      <MovementDetailDialog
+        movement={selectedMovement}
+        open={!!selectedMovement}
+        onClose={() => setSelectedMovement(null)}
+      />
     </Layout>
   );
 }
