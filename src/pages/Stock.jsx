@@ -1,11 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
-import { ArrowUpRight, Undo2, PackagePlus, SlidersHorizontal, History, Download, X, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowUpRight, Undo2, PackagePlus, SlidersHorizontal, History, X, Plus, AlertTriangle } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
@@ -22,10 +21,9 @@ import DentalPlaceholder from '@/components/common/DentalPlaceholder';
 import CopyableCode from '@/components/common/CopyableCode';
 import EmptyState from '@/components/common/EmptyState';
 import { useAllComponents } from '@/hooks/useComponents';
-import { useAllStockMovements, useLogStockMovement, useLogBatchStockMovements } from '@/hooks/useStock';
+import { useAllStockMovements, useLogStockMovement } from '@/hooks/useStock';
 import { formatCurrency, getStockStatus, getSystemStyle, cn, toTitleCase } from '@/lib/utils';
 import { useSettings } from '@/context/SettingsContext';
-import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -86,7 +84,6 @@ function StockDialog({ component, type, open, onClose }) {
   const logMovement = useLogStockMovement();
   const cfg  = MOVEMENT_TYPES[type] || MOVEMENT_TYPES.out;
   const Icon = cfg.icon;
-  // out / in use structured fields; received keeps plain notes
   const isStructured = type === 'out' || type === 'in';
 
   if (!component) return null;
@@ -155,7 +152,6 @@ function StockDialog({ component, type, open, onClose }) {
         <Separator />
 
         <form onSubmit={handleSubmit} className="space-y-3 pt-1">
-          {/* Quantity — always shown */}
           <div className="space-y-1.5">
             <Label htmlFor="qty">Quantity *</Label>
             <Input id="qty" type="number" min={1} value={qty} onChange={e => setQty(e.target.value)} required autoFocus />
@@ -163,12 +159,10 @@ function StockDialog({ component, type, open, onClose }) {
 
           {isStructured ? (
             <>
-              {/* Case ID */}
               <div className="space-y-1.5">
                 <Label htmlFor="dlg-caseId">Case ID</Label>
                 <Input id="dlg-caseId" value={caseId} onChange={e => setCaseId(e.target.value)} placeholder="e.g. SSAA452015AH" />
               </div>
-              {/* Doctor + Patient side by side */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="dlg-doctor">Doctor Name</Label>
@@ -182,7 +176,6 @@ function StockDialog({ component, type, open, onClose }) {
                   <Input id="dlg-patient" value={patientName} onChange={e => setPatientName(toTitleCase(e.target.value))} placeholder="John Doe" />
                 </div>
               </div>
-              {/* Collapsible extra notes */}
               {(showNotes || notes) ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -204,7 +197,6 @@ function StockDialog({ component, type, open, onClose }) {
               )}
             </>
           ) : (
-            /* Received — plain notes */
             <div className="space-y-1.5">
               <Label htmlFor="dlg-notes">Notes (optional)</Label>
               <Textarea id="dlg-notes" placeholder={cfg.notesPlaceholder} value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
@@ -305,9 +297,7 @@ function MovementBadge({ type }) {
 // ── Page ──────────────────────────────────────────────────────────────
 export default function Stock() {
   const { data: components, isLoading: loadingComponents } = useAllComponents();
-  const { data: movements, isLoading: loadingMovements } = useAllStockMovements();
-  const logBatch = useLogBatchStockMovements();
-  const { isAdmin } = useAuth();
+  const { data: movements, isLoading: loadingMovements }   = useAllStockMovements();
   const { canLogStock, canViewHistory } = usePermissions();
   const { settings } = useSettings();
 
@@ -315,148 +305,27 @@ export default function Stock() {
   const [dialog,            setDialog]            = useState(null);
   const [selectedComponent, setSelectedComponent] = useState(null);
   const [activeTab,         setActiveTab]         = useState('inventory');
-  const [selected,          setSelected]          = useState(new Set());
-  const [batchQty,          setBatchQty]          = useState(1);
+  // #22 low-stock filter toggle
+  const [showLowStockOnly,  setShowLowStockOnly]  = useState(false);
 
-  // ── Drag-select + auto-scroll refs ──────────────────────────────────
-  const isDragging           = useRef(false);
-  const dragStartIndex       = useRef(null);
-  const dragStartValue       = useRef(true);
-  const dragOriginalSelected = useRef(null);
-  const mouseXRef            = useRef(0);
-  const mouseYRef            = useRef(0);
-  const scrollRafRef         = useRef(null);
-  const filteredRef          = useRef([]);
+  // #22 Low Stock items count
+  const threshold     = settings.lowStockThreshold ?? 5;
+  const lowStockItems = (components ?? []).filter(c => c.stock_qty <= threshold);
 
-  const filtered = (components ?? []).filter(c =>
-    !search ||
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.system.toLowerCase().includes(search.toLowerCase()) ||
-    c.component_code?.toLowerCase().includes(search.toLowerCase())
-  );
-
-  useEffect(() => { filteredRef.current = filtered; });
-
-  // ── Selection ────────────────────────────────────────────────────────
-  const visibleSelected = filtered.filter(c => selected.has(c.id));
-  const selectedCount   = visibleSelected.length;
-  const allSelected     = filtered.length > 0 && selectedCount === filtered.length;
-  const someSelected    = selectedCount > 0 && !allSelected;
-
-  function toggleAll()       { setSelected(allSelected ? new Set() : new Set(filtered.map(c => c.id))); }
-  function clearSelection()  { setSelected(new Set()); }
-
-  function applyDragAt(idx) {
-    if (!isDragging.current || dragStartIndex.current === null) return;
-    const f    = filteredRef.current;
-    const orig = dragOriginalSelected.current;
-    if (!orig) return;
-    const lo = Math.min(dragStartIndex.current, idx);
-    const hi = Math.max(dragStartIndex.current, idx);
-    setSelected(() => {
-      const next = new Set(orig);
-      for (let i = lo; i <= hi; i++) {
-        if (!f[i]) continue;
-        dragStartValue.current ? next.add(f[i].id) : next.delete(f[i].id);
-      }
-      return next;
-    });
-  }
-
-  // ── Global mouse listeners ──────────────────────────────────────────
-  useEffect(() => {
-    const ZONE = 80, MAX_SPEED = 14;
-    function speed(y) {
-      if (y < ZONE) return -Math.ceil(MAX_SPEED * (1 - y / ZONE));
-      const d = window.innerHeight - y;
-      if (d < ZONE) return Math.ceil(MAX_SPEED * (1 - d / ZONE));
-      return 0;
-    }
-    function rowAt(x, y) {
-      const el = document.elementFromPoint(x, y);
-      const row = el?.closest('[data-row-index]');
-      return row ? Number(row.dataset.rowIndex) : null;
-    }
-    function frame() {
-      if (!isDragging.current) { scrollRafRef.current = null; return; }
-      const s = speed(mouseYRef.current);
-      if (s !== 0) {
-        window.scrollBy(0, s);
-        const idx = rowAt(mouseXRef.current, mouseYRef.current);
-        if (idx !== null) applyDragAt(idx);
-      }
-      scrollRafRef.current = requestAnimationFrame(frame);
-    }
-    function onMove(e) {
-      mouseXRef.current = e.clientX; mouseYRef.current = e.clientY;
-      if (isDragging.current && !scrollRafRef.current)
-        scrollRafRef.current = requestAnimationFrame(frame);
-    }
-    function onUp() {
-      isDragging.current = false;
-      if (scrollRafRef.current) { cancelAnimationFrame(scrollRafRef.current); scrollRafRef.current = null; }
-    }
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
-    return () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
-    };
-  }, []);
-
-  function handleCheckboxMouseDown(e, idx) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    const id = filtered[idx].id;
-    dragOriginalSelected.current = new Set(selected);
-    isDragging.current     = true;
-    dragStartIndex.current = idx;
-    dragStartValue.current = !selected.has(id);
-    applyDragAt(idx);
-  }
-
-  // ── Batch actions ────────────────────────────────────────────────────
-  async function handleBatchOutward() {
-    const qty = Number(batchQty);
-    if (!qty || qty < 1) return;
-    if (!confirm(`Log Outward ×${qty} for ${selectedCount} component${selectedCount > 1 ? 's' : ''}?`)) return;
-    await logBatch.mutateAsync({ components: visibleSelected, type: 'out', quantity: qty });
-    clearSelection();
-    toast.success(`Outward ×${qty} logged for ${selectedCount} component${selectedCount > 1 ? 's' : ''}`);
-  }
-
-  async function handleBatchReceived() {
-    const qty = Number(batchQty);
-    if (!qty || qty < 1) return;
-    if (!confirm(`Log Received ×${qty} for ${selectedCount} component${selectedCount > 1 ? 's' : ''}?`)) return;
-    await logBatch.mutateAsync({ components: visibleSelected, type: 'received', quantity: qty });
-    clearSelection();
-    toast.success(`Received ×${qty} logged for ${selectedCount} component${selectedCount > 1 ? 's' : ''}`);
-  }
-
-  function handleBatchExport() {
-    const headers = ['Name', 'System', 'Code', 'Stock', 'Status'];
-    const rows = visibleSelected.map(c => [
-      `"${(c.name ?? '').replace(/"/g, '""')}"`,
-      c.system ?? '',
-      c.component_code ?? '',
-      c.stock_qty ?? 0,
-      c.is_active ? 'Active' : 'Hidden',
-    ]);
-    const csv  = [headers, ...rows].map(r => r.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = `implantdesk-stock-${Date.now()}.csv`; a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`${selectedCount} component${selectedCount > 1 ? 's' : ''} exported`);
-  }
+  const filtered = (components ?? []).filter(c => {
+    if (showLowStockOnly) return c.stock_qty <= threshold;
+    return (
+      !search ||
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.system.toLowerCase().includes(search.toLowerCase()) ||
+      c.component_code?.toLowerCase().includes(search.toLowerCase())
+    );
+  });
 
   return (
-    <Layout>
+    <Layout title="Stock">
       <div className="space-y-5">
-        {/* Sticky action bar: title + tab switcher + search */}
+        {/* Sticky action bar */}
         <div className="sticky top-14 z-20 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-3 pb-3 bg-background/95 backdrop-blur-sm border-b border-border">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div>
@@ -468,7 +337,7 @@ export default function Stock() {
                 <Input
                   placeholder="Search components…"
                   value={search}
-                  onChange={e => setSearch(e.target.value)}
+                  onChange={e => { setSearch(e.target.value); setShowLowStockOnly(false); }}
                   className="h-8 w-44 text-sm"
                 />
               )}
@@ -503,59 +372,31 @@ export default function Stock() {
         {/* ── Inventory Tab ── */}
         {activeTab === 'inventory' && (
           <>
-
-            {/* Batch action bar */}
-            {selectedCount > 0 && (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
-                <div className="flex items-center gap-1.5 mr-auto">
-                  <span className="text-sm font-medium">
-                    {selectedCount} component{selectedCount > 1 ? 's' : ''} selected
-                  </span>
-                  <button onClick={clearSelection} className="rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors" title="Clear selection">
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-                {canLogStock && (
-                  <>
-                    {/* Quantity input */}
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground">Qty:</span>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={batchQty}
-                        onChange={e => setBatchQty(Math.max(1, Number(e.target.value)))}
-                        className="h-8 w-16 text-xs text-center"
-                      />
-                    </div>
-                    <Button variant="outline" size="sm" className={cn('gap-1.5 h-8', MOVEMENT_TYPES.out.btnClass)} onClick={handleBatchOutward} disabled={logBatch.isPending}>
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                      Outward
-                    </Button>
-                    <Button variant="outline" size="sm" className={cn('gap-1.5 h-8', MOVEMENT_TYPES.received.btnClass)} onClick={handleBatchReceived} disabled={logBatch.isPending}>
-                      <PackagePlus className="h-3.5 w-3.5" />
-                      Received
-                    </Button>
-                  </>
+            {/* #22 Low Stock banner */}
+            {!loadingComponents && lowStockItems.length > 0 && (
+              <button
+                onClick={() => setShowLowStockOnly(v => !v)}
+                className={cn(
+                  'w-full flex items-center gap-2 px-4 py-2.5 rounded-lg border text-left transition-colors',
+                  showLowStockOnly
+                    ? 'bg-amber-100 border-amber-300 text-amber-800'
+                    : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100',
                 )}
-                <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchExport} disabled={logBatch.isPending}>
-                  <Download className="h-3.5 w-3.5" />
-                  Export CSV
-                </Button>
-              </div>
+              >
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span className="text-sm font-medium">
+                  {lowStockItems.length} item{lowStockItems.length !== 1 ? 's' : ''} {lowStockItems.length === 1 ? 'is' : 'are'} low on stock or out of stock
+                </span>
+                <span className="ml-auto text-xs underline shrink-0">
+                  {showLowStockOnly ? 'Show all' : 'Show only these'}
+                </span>
+              </button>
             )}
 
             <div className="rounded-lg border border-border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10 pr-0">
-                      <Checkbox
-                        checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                        onCheckedChange={toggleAll}
-                        aria-label="Select all"
-                      />
-                    </TableHead>
                     <TableHead>Component</TableHead>
                     <TableHead className="hidden md:table-cell">System</TableHead>
                     <TableHead className="hidden sm:table-cell">Code</TableHead>
@@ -568,38 +409,20 @@ export default function Stock() {
                   {loadingComponents
                     ? Array.from({ length: 6 }).map((_, i) => (
                         <TableRow key={i}>
-                          {Array.from({ length: 7 }).map((_, j) => (
+                          {Array.from({ length: 5 }).map((_, j) => (
                             <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
                           ))}
                         </TableRow>
                       ))
-                    : filtered.map((c, idx) => {
-                        const stock    = getStockStatus(c.stock_qty);
+                    : filtered.map(c => {
+                        const stock = getStockStatus(c.stock_qty);
                         const { className: sysClass, style: sysStyle } = getSystemStyle(c.system, settings.systemColors);
-                        const isChecked = selected.has(c.id);
                         return (
                           <TableRow
                             key={c.id}
-                            data-row-index={idx}
-                            className={cn('cursor-pointer select-none', isChecked && 'bg-muted/40')}
+                            className="cursor-pointer"
                             onClick={() => setSelectedComponent(c)}
-                            onMouseEnter={() => {
-                              if (isDragging.current && dragStartIndex.current !== null) applyDragAt(idx);
-                            }}
                           >
-                            {/* Checkbox cell — stops row click, starts drag */}
-                            <TableCell
-                              className="w-10 pr-0"
-                              onClick={e => e.stopPropagation()}
-                              onMouseDown={e => handleCheckboxMouseDown(e, idx)}
-                            >
-                              <Checkbox
-                                checked={isChecked}
-                                className="pointer-events-none"
-                                aria-label={`Select ${c.name}`}
-                              />
-                            </TableCell>
-
                             <TableCell className="font-medium text-sm max-w-[180px]">
                               <TooltipProvider delayDuration={300}>
                                 <Tooltip>

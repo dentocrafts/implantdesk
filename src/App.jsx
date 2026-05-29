@@ -44,7 +44,7 @@ function AppRoutes() {
         element={user ? <Navigate to="/catalog" replace /> : <Auth />}
       />
       <Route path="/catalog" element={<ProtectedRoute><Catalog /></ProtectedRoute>} />
-      <Route path="/screws" element={<ProtectedRoute><Screws /></ProtectedRoute>} />
+      <Route path="/screws" element={<Navigate to="/catalog" replace />} />
       <Route path="/stock" element={<ProtectedRoute><Stock /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
       <Route path="/slip" element={<ProtectedRoute><OrderSlip /></ProtectedRoute>} />

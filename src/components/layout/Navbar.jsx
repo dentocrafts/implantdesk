@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Package, Settings, LogOut, ChevronDown, Stethoscope, History } from 'lucide-react';
+import { Package, Settings, LogOut, ChevronDown, Stethoscope } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
@@ -16,7 +16,7 @@ export default function Navbar() {
   const { user, profile, signOut, isAdmin } = useAuth();
   const { totalItems } = useDispatchNote();
   const { settings } = useSettings();
-  const { canManageComponents, canViewHistory } = usePermissions();
+  const { canManageComponents } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -27,14 +27,19 @@ export default function Navbar() {
     .toUpperCase()
     .slice(0, 2) || 'DR';
 
+  // #3 reordered: Catalog | Dispatch | Stock | History | Admin
   const navLinks = [
     { to: '/catalog',  label: 'Catalog'  },
-    { to: '/screws',   label: 'Screws'   },
-    { to: '/stock',    label: 'Stock'    },
     { to: '/slip',     label: 'Dispatch' },
-    ...(canViewHistory ? [{ to: '/history', label: 'History' }] : []),
+    { to: '/stock',    label: 'Stock'    },
+    { to: '/history',  label: 'History'  },
     { to: '/admin',    label: (isAdmin || canManageComponents) ? 'Admin' : 'Settings' },
   ];
+
+  // #4 exact-match active so /slip highlights Dispatch correctly
+  function isActive(to) {
+    return location.pathname === to || location.pathname.startsWith(to + '/');
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur-sm shadow-sm print:hidden">
@@ -64,7 +69,7 @@ export default function Navbar() {
                 to={link.to}
                 className={cn(
                   'relative px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
-                  location.pathname.startsWith(link.to)
+                  isActive(link.to)
                     ? 'bg-accent text-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                 )}
@@ -81,7 +86,6 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center gap-2">
-            {/* User menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 px-2 h-9">
@@ -104,12 +108,6 @@ export default function Navbar() {
                   <Package className="h-4 w-4 mr-2" />
                   Stock Management
                 </DropdownMenuItem>
-                {canViewHistory && (
-                  <DropdownMenuItem onClick={() => navigate('/history')}>
-                    <History className="h-4 w-4 mr-2" />
-                    Movement History
-                  </DropdownMenuItem>
-                )}
                 <DropdownMenuItem onClick={() => navigate('/admin?tab=settings')}>
                   <Settings className="h-4 w-4 mr-2" />
                   Settings

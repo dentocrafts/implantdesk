@@ -6,6 +6,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import DentalPlaceholder from '@/components/common/DentalPlaceholder';
 import CopyableCode from '@/components/common/CopyableCode';
 import { useDispatchNote } from '@/context/DispatchContext';
@@ -33,7 +36,8 @@ export default function ComponentDetailModal({ component, open, onClose }) {
 
   if (!component) return null;
 
-  const stock = getStockStatus(component.stock_qty);
+  const stock  = getStockStatus(component.stock_qty);
+  const isOos  = component.stock_qty === 0;
   const { className: sysClass, style: sysStyle } = getSystemStyle(component.system, settings.systemColors);
   const { src: imgSrc, x: imgX, y: imgY } = parseImagePos(component.image_url);
 
@@ -100,31 +104,55 @@ export default function ComponentDetailModal({ component, open, onClose }) {
               </div>
             </div>
 
-            {/* Add to Dispatch */}
-            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
-              <ClipboardList className="h-4 w-4 text-primary shrink-0" />
-              <span className="text-sm font-medium text-primary flex-1">Add to Dispatch</span>
-              {/* Qty picker */}
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setQty(q => Math.max(1, q - 1))}
-                  className="h-7 w-7 flex items-center justify-center rounded border border-border bg-background hover:bg-accent transition-colors"
-                >
-                  <Minus className="h-3 w-3" />
-                </button>
-                <span className="w-8 text-center text-sm font-semibold">{qty}</span>
-                <button
-                  onClick={() => setQty(q => q + 1)}
-                  className="h-7 w-7 flex items-center justify-center rounded border border-border bg-background hover:bg-accent transition-colors"
-                >
-                  <Plus className="h-3 w-3" />
-                </button>
+            {/* #9 / #13 Add to Dispatch — disabled + tooltip when OOS */}
+            <TooltipProvider>
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-center gap-3">
+                <ClipboardList className="h-4 w-4 text-primary shrink-0" />
+                <div className="flex-1">
+                  <span className="text-sm font-medium text-primary">Add to Dispatch</span>
+                  {/* #13 helper tooltip text */}
+                  <p className="text-xs text-muted-foreground mt-0.5">Adds to your current Dispatch Note</p>
+                </div>
+                {/* Qty picker */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setQty(q => Math.max(1, q - 1))}
+                    disabled={isOos}
+                    className="h-7 w-7 flex items-center justify-center rounded border border-border bg-background hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="w-8 text-center text-sm font-semibold">{qty}</span>
+                  <button
+                    onClick={() => setQty(q => q + 1)}
+                    disabled={isOos}
+                    className="h-7 w-7 flex items-center justify-center rounded border border-border bg-background hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Plus className="h-3 w-3" />
+                  </button>
+                </div>
+                {/* #9 disabled Add button with tooltip when OOS */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span tabIndex={isOos ? 0 : undefined}>
+                      <Button
+                        size="sm"
+                        onClick={handleAddToDispatch}
+                        disabled={isOos}
+                        className="h-7 px-3 text-xs"
+                      >
+                        Add
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  {isOos && (
+                    <TooltipContent side="top" className="text-xs">
+                      Cannot add — out of stock
+                    </TooltipContent>
+                  )}
+                </Tooltip>
               </div>
-              <Button size="sm" onClick={handleAddToDispatch} className="h-7 px-3 text-xs">
-                Add
-              </Button>
-            </div>
-
+            </TooltipProvider>
           </div>
         </div>
       </DialogContent>

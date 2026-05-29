@@ -1,6 +1,11 @@
+import { useEffect } from 'react';
 import Navbar from './Navbar';
 
-export default function Layout({ children }) {
+export default function Layout({ children, title }) {
+  useEffect(() => {
+    document.title = title ? `${title} — ImplantDesk` : 'ImplantDesk';
+  }, [title]);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />

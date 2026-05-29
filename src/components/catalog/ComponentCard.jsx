@@ -1,4 +1,5 @@
 import { Eye, ClipboardList } from 'lucide-react';
+import { toTitleCase } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import DentalPlaceholder from '@/components/common/DentalPlaceholder';
@@ -61,13 +62,13 @@ export default function ComponentCard({ component, onViewDetail }) {
       </div>
 
       <CardContent className="flex flex-col gap-1.5 p-2.5 flex-1">
-        {/* Name */}
-        <h3 className="font-semibold text-sm leading-tight line-clamp-2">{component.name}</h3>
+        {/* #8 Name wraps fully — no truncation */}
+        <h3 className="font-semibold text-sm leading-tight">{component.name}</h3>
 
-        {/* Tags */}
+        {/* #7 / #20 Tags with title-case labels */}
         <div className="flex flex-wrap gap-1">
           <Badge variant="secondary" className="text-xs px-1.5 py-0 h-5">
-            {component.abutment_type}
+            {toTitleCase(component.abutment_type ?? '')}
           </Badge>
           <Badge variant="outline" className="text-xs px-1.5 py-0 h-5 border-muted-foreground/20">
             {component.category === 'screw' ? 'L' : 'GH'} {component.gingival_height_mm}mm

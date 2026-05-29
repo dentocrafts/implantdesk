@@ -409,8 +409,9 @@ export default function ComponentManager() {
                       <TableCell className="hidden sm:table-cell">
                         <CopyableCode code={c.component_code} />
                       </TableCell>
-                      <TableCell className="text-primary font-medium text-sm">
-                        {formatCurrency(c.price)}
+                      {/* #18 show "—" instead of ₹0 */}
+                      <TableCell className={cn('font-medium text-sm', c.price ? 'text-primary' : 'text-muted-foreground')}>
+                        {c.price ? formatCurrency(c.price) : '—'}
                       </TableCell>
                       <TableCell>
                         <Input

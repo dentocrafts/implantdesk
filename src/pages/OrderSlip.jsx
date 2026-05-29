@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Plus, Minus, Printer, Search, FileText, RotateCcw, LayoutGrid, ClipboardList, X, MessageSquare, Check, Trash2, AlertTriangle, Truck } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -113,16 +113,18 @@ function DispatchComponentModal({ component, open, onClose, onAdd, currentQty })
 }
 
 // ── Compact catalog card ───────────────────────────────────────────────
-function CatalogCard({ component, onAdd, onViewDetail, dispatchQty }) {
+function CatalogCard({ component, onAdd, onViewDetail, dispatchQty, isFlashing }) {
   const { settings } = useSettings();
   const { className: sysClass, style: sysStyle } = getSystemStyle(component.system, settings.systemColors);
   const isOos = component.stock_qty === 0;
 
   return (
     <div
+      // #11 flash-add CSS animation on successful add
       className={cn(
         'flex items-center gap-2.5 p-2 rounded-lg border bg-card hover:border-primary/30 hover:bg-accent/30 transition-colors cursor-pointer',
         isOos ? 'border-destructive/30' : 'border-border',
+        isFlashing && 'flash-add',
       )}
       onClick={() => onViewDetail(component)}
     >
@@ -182,15 +184,21 @@ export default function OrderSlip() {
   const { caseId, setCaseId, doctorName, setDoctorName, patientName, setPatientName, notes, setNotes, items, addItem, removeItem, updateQty, clearDispatch } = useDispatchNote();
   const { settings } = useSettings();
   const { canViewPricing, canPrintDispatch } = usePermissions();
-  const [search,           setSearch]          = useState('');
-  const [slipNo]                               = useState(SlipNumber);
-  const [mobileView,       setMobileView]      = useState('catalog');
-  const [detailComponent,  setDetailComponent] = useState(null);
-  const [waCopied,         setWaCopied]        = useState(false);
-  const [selectedItems,      setSelectedItems]      = useState(new Set());
-  const [outOfStockTarget,   setOutOfStockTarget]   = useState(null);
+  const [search,             setSearch]           = useState('');
+  const [slipNo]                                 = useState(SlipNumber);
+  const [mobileView,         setMobileView]       = useState('catalog');
+  const [detailComponent,    setDetailComponent]  = useState(null);
+  const [waCopied,           setWaCopied]         = useState(false);
+  const [selectedItems,      setSelectedItems]    = useState(new Set());
+  const [outOfStockTarget,   setOutOfStockTarget] = useState(null);
   const [confirmingDispatch, setConfirmingDispatch] = useState(false);
-  const [showNotes,          setShowNotes]          = useState(false);
+  const [showNotes,          setShowNotes]        = useState(false);
+  // #10 system filter for catalog panel
+  const [systemFilter,       setSystemFilter]     = useState('All');
+  // #11 green flash on add
+  const [flashIds,           setFlashIds]         = useState(new Set());
+  // #12 case ID validation
+  const [caseIdError,        setCaseIdError]      = useState(false);
 
   // Auto-collapse notes field when notes is cleared (e.g. after dispatch)
   useEffect(() => { if (!notes) setShowNotes(false); }, [notes]);
@@ -314,19 +322,29 @@ export default function OrderSlip() {
 
   const { data: components = [] } = useComponents({});
 
-  const filtered = search.trim().length > 0
-    ? components.filter(c => {
-        const q      = search.trim().toLowerCase();
-        const numStr = q.replace(/mm$/i, '').trim();
-        const num    = parseFloat(numStr);
-        const isNum  = numStr !== '' && !isNaN(num) && isFinite(num);
-        return (
-          c.name.toLowerCase().includes(q) ||
-          c.component_code?.toLowerCase().includes(q) ||
-          (isNum && (c.gingival_height_mm == num || c.platform_diameter == num))
-        );
-      })
-    : components;
+  // #10 dynamically build system list
+  const availableSystems = useMemo(() => {
+    const systems = [...new Set(components.map(c => c.system).filter(Boolean))].sort();
+    return ['All', ...systems];
+  }, [components]);
+
+  const filtered = useMemo(() => {
+    let list = search.trim().length > 0
+      ? components.filter(c => {
+          const q      = search.trim().toLowerCase();
+          const numStr = q.replace(/mm$/i, '').trim();
+          const num    = parseFloat(numStr);
+          const isNum  = numStr !== '' && !isNaN(num) && isFinite(num);
+          return (
+            c.name.toLowerCase().includes(q) ||
+            c.component_code?.toLowerCase().includes(q) ||
+            (isNum && (c.gingival_height_mm == num || c.platform_diameter == num))
+          );
+        })
+      : components;
+    if (systemFilter !== 'All') list = list.filter(c => c.system === systemFilter);
+    return list;
+  }, [components, search, systemFilter]);
 
   function handleAdd(component, qty = 1) {
     if (component.stock_qty === 0) {
@@ -335,6 +353,9 @@ export default function OrderSlip() {
     }
     addItem(component, qty);
     toast.success('Added to dispatch', { description: component.name, duration: 1500 });
+    // #11 flash the row green
+    setFlashIds(prev => new Set([...prev, component.id]));
+    setTimeout(() => setFlashIds(prev => { const n = new Set(prev); n.delete(component.id); return n; }), 700);
   }
 
   function confirmAddOutOfStock() {
@@ -363,7 +384,15 @@ export default function OrderSlip() {
     return items.find(i => i.id === id)?.qty ?? 0;
   }
 
+  // #12 Case ID validation
+  function validateCaseId() {
+    if (!caseId.trim()) { setCaseIdError(true); return false; }
+    setCaseIdError(false);
+    return true;
+  }
+
   async function handleCopyWhatsApp() {
+    if (!validateCaseId()) { toast.error('Case ID is required'); return; }
     const wf = settings.waFields ?? {};
     const lines = [];
     if (wf.caseId      !== false)                              lines.push(`*Case ID:* ${caseId || '—'}`);
@@ -398,7 +427,7 @@ export default function OrderSlip() {
   return (
     <>
       {/* ── Screen UI ── */}
-      <Layout>
+      <Layout title="Dispatch">
         <div className="print:hidden">
 
           {/* Page header */}
@@ -438,7 +467,11 @@ export default function OrderSlip() {
                 </Button>
               )}
               {canPrintDispatch && (
-                <Button onClick={() => window.print()} disabled={!items.length} className="gap-2">
+                <Button
+                  onClick={() => { if (!validateCaseId()) { toast.error('Case ID is required'); return; } window.print(); }}
+                  disabled={!items.length}
+                  className="gap-2"
+                >
                   <Printer className="h-4 w-4" />
                   Print / Save PDF
                 </Button>
@@ -494,6 +527,26 @@ export default function OrderSlip() {
                 )}
               </div>
 
+              {/* #10 System filter pills */}
+              {availableSystems.length > 2 && (
+                <div className="flex flex-wrap gap-1">
+                  {availableSystems.map(sys => (
+                    <button
+                      key={sys}
+                      onClick={() => setSystemFilter(sys)}
+                      className={cn(
+                        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border transition-colors',
+                        systemFilter === sys
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background border-border text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                      )}
+                    >
+                      {sys}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="text-xs text-muted-foreground">
                 {filtered.length === components.length
                   ? `${components.length} components`
@@ -509,6 +562,7 @@ export default function OrderSlip() {
                         onAdd={handleAdd}
                         onViewDetail={setDetailComponent}
                         dispatchQty={getDispatchQty(c.id)}
+                        isFlashing={flashIds.has(c.id)}
                       />
                     ))
                   : (
@@ -525,9 +579,16 @@ export default function OrderSlip() {
 
               {/* Case info */}
               <div className="p-4 rounded-lg border border-border bg-card space-y-3">
-                <div className="space-y-1.5">
+                {/* #12 Case ID with inline validation */}
+                <div className="space-y-1">
                   <Label>Case ID *</Label>
-                  <Input value={caseId} onChange={e => setCaseId(e.target.value)} placeholder="e.g. SSAA452015AH" />
+                  <Input
+                    value={caseId}
+                    onChange={e => { setCaseId(e.target.value); if (e.target.value.trim()) setCaseIdError(false); }}
+                    placeholder="e.g. SSAA452015AH"
+                    className={cn(caseIdError && 'border-destructive focus-visible:ring-destructive')}
+                  />
+                  {caseIdError && <p className="text-xs text-destructive">Case ID is required.</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">

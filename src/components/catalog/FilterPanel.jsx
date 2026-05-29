@@ -1,4 +1,5 @@
 import { X, SlidersHorizontal } from 'lucide-react';
+import { toTitleCase } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,7 @@ function FilterSection({ title, items, selected, onToggle }) {
       <div className="space-y-1.5">
         {items.map(item => {
           const val   = typeof item === 'object' ? item.value : item;
-          const label = typeof item === 'object' ? item.label : String(item);
+          const label = toTitleCase(typeof item === 'object' ? item.label : String(item));
           const isChecked = selected.includes(val);
           return (
             <div key={val} className="flex items-center gap-2">

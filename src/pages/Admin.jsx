@@ -36,7 +36,7 @@ export default function Admin() {
   if (!user) return <Navigate to="/catalog" replace />;
 
   return (
-    <Layout>
+    <Layout title={hasComponentAccess ? 'Admin' : 'Settings'}>
       <div className="space-y-6">
         <div>
           <h2 className="text-xl font-bold">{hasComponentAccess ? 'Admin Panel' : 'Settings'}</h2>

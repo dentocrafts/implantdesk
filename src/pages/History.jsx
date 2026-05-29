@@ -266,6 +266,9 @@ export default function HistoryPage() {
   const [search,            setSearch]           = useState('');
   const [typeFilter,        setTypeFilter]       = useState('all');
   const [selectedMovement,  setSelectedMovement] = useState(null);
+  // #16 date range filter
+  const [dateFrom,          setDateFrom]         = useState('');
+  const [dateTo,            setDateTo]           = useState('');
 
   const filtered = useMemo(() => {
     if (!movements) return [];
@@ -273,10 +276,19 @@ export default function HistoryPage() {
       // Type filter
       if (typeFilter !== 'all') {
         const disp = isDispatch(m);
-        if (typeFilter === 'dispatch' && !disp)                    return false;
+        if (typeFilter === 'dispatch' && !disp)                      return false;
         if (typeFilter === 'out'      && (m.type !== 'out' || disp)) return false;
-        if (typeFilter === 'in'       && m.type !== 'in')           return false;
-        if (typeFilter === 'received' && m.type !== 'received')     return false;
+        if (typeFilter === 'in'       && m.type !== 'in')            return false;
+        if (typeFilter === 'received' && m.type !== 'received')      return false;
+      }
+      // #16 date range filter
+      if (dateFrom) {
+        const from = new Date(dateFrom); from.setHours(0, 0, 0, 0);
+        if (new Date(m.created_at) < from) return false;
+      }
+      if (dateTo) {
+        const to = new Date(dateTo); to.setHours(23, 59, 59, 999);
+        if (new Date(m.created_at) > to) return false;
       }
       // Text search
       if (search.trim()) {
@@ -289,7 +301,7 @@ export default function HistoryPage() {
       }
       return true;
     });
-  }, [movements, typeFilter, search]);
+  }, [movements, typeFilter, search, dateFrom, dateTo]);
 
   const groups = useMemo(() => groupByDate(filtered), [filtered]);
 
@@ -334,7 +346,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <Layout>
+    <Layout title="History">
       <div className="space-y-5">
 
         {/* ── Sticky header ── */}
@@ -370,6 +382,38 @@ export default function HistoryPage() {
                 Export CSV
               </Button>
             </div>
+          </div>
+
+          {/* #16 Date range filter */}
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span className="text-xs text-muted-foreground shrink-0">Date range:</span>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="h-8 px-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              title="From date"
+            />
+            <span className="text-xs text-muted-foreground">to</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={e => setDateTo(e.target.value)}
+              className="h-8 px-2 text-sm border border-input rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+              title="To date"
+            />
+            {(dateFrom || dateTo) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 gap-1 text-muted-foreground"
+                onClick={() => { setDateFrom(''); setDateTo(''); }}
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear
+              </Button>
+            )}
           </div>
 
           {/* Filter chips */}
