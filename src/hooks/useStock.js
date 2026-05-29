@@ -73,9 +73,11 @@ export function useDispatchStock() {
   const qc = useQueryClient();
   const { user } = useAuth();
   return useMutation({
-    mutationFn: async ({ items, caseId, notes: dispatchNotes }) => {
+    mutationFn: async ({ items, caseId, doctorName, patientName, notes: dispatchNotes }) => {
       const noteText = [
-        caseId && `Case: ${caseId}`,
+        caseId      && `Case: ${caseId}`,
+        doctorName  && `Dr: ${doctorName.trim()}`,
+        patientName && `Patient: ${patientName.trim()}`,
         dispatchNotes && dispatchNotes.trim(),
       ].filter(Boolean).join(' · ') || 'Dispatched via slip';
 

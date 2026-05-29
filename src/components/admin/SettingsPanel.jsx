@@ -660,13 +660,16 @@ export default function SettingsPanel({ isAdmin = true }) {
         <SettingRow label="Default Status Text" hint="The *Status:* line at the bottom of WhatsApp messages">
           <Input value={draft.waStatusText} onChange={e => set('waStatusText', e.target.value)} placeholder="e.g. Pending Dispatch" />
         </SettingRow>
-        <SettingRow label="Include Case ID"        hint="Show *Case ID:* in copied message">
-          <Switch checked={draft.waFields?.caseId        ?? true} onCheckedChange={v => setWaField('caseId', v)} />
+        <SettingRow label="Include Case ID"      hint="Show *Case ID:* in copied message">
+          <Switch checked={draft.waFields?.caseId      ?? true} onCheckedChange={v => setWaField('caseId', v)} />
         </SettingRow>
-        <SettingRow label="Include Patient Name"   hint="Show *Patient Name:* line (blank, staff fills manually)">
-          <Switch checked={draft.waFields?.patientName   ?? true} onCheckedChange={v => setWaField('patientName', v)} />
+        <SettingRow label="Include Doctor Name"  hint="Show *Doctor:* if a doctor name is entered on the slip">
+          <Switch checked={draft.waFields?.doctorName  ?? true} onCheckedChange={v => setWaField('doctorName', v)} />
         </SettingRow>
-        <SettingRow label="Include Notes"          hint="Show *Notes:* if notes are present">
+        <SettingRow label="Include Patient Name" hint="Show *Patient:* if a patient name is entered on the slip">
+          <Switch checked={draft.waFields?.patientName ?? true} onCheckedChange={v => setWaField('patientName', v)} />
+        </SettingRow>
+        <SettingRow label="Include Notes"        hint="Show *Notes:* if notes are present">
           <Switch checked={draft.waFields?.notes         ?? true} onCheckedChange={v => setWaField('notes', v)} />
         </SettingRow>
         <SettingRow label="Include Component Code" hint="Show (code) after each component name">

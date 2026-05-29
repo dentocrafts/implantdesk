@@ -179,7 +179,7 @@ function CatalogCard({ component, onAdd, onViewDetail, dispatchQty }) {
 
 // ── Page ──────────────────────────────────────────────────────────────
 export default function OrderSlip() {
-  const { caseId, setCaseId, notes, setNotes, items, addItem, removeItem, updateQty, clearDispatch } = useDispatchNote();
+  const { caseId, setCaseId, doctorName, setDoctorName, patientName, setPatientName, notes, setNotes, items, addItem, removeItem, updateQty, clearDispatch } = useDispatchNote();
   const { settings } = useSettings();
   const { canViewPricing, canPrintDispatch } = usePermissions();
   const [search,           setSearch]          = useState('');
@@ -190,6 +190,10 @@ export default function OrderSlip() {
   const [selectedItems,      setSelectedItems]      = useState(new Set());
   const [outOfStockTarget,   setOutOfStockTarget]   = useState(null);
   const [confirmingDispatch, setConfirmingDispatch] = useState(false);
+  const [showNotes,          setShowNotes]          = useState(false);
+
+  // Auto-collapse notes field when notes is cleared (e.g. after dispatch)
+  useEffect(() => { if (!notes) setShowNotes(false); }, [notes]);
   const dispatchStock = useDispatchStock();
   // outOfStockTarget: null | { component, qty }
 
@@ -343,7 +347,7 @@ export default function OrderSlip() {
 
   async function handleConfirmDispatch() {
     try {
-      await dispatchStock.mutateAsync({ items, caseId, notes });
+      await dispatchStock.mutateAsync({ items, caseId, doctorName, patientName, notes });
       const count = items.length;
       clearDispatch();
       setConfirmingDispatch(false);
@@ -363,9 +367,10 @@ export default function OrderSlip() {
   async function handleCopyWhatsApp() {
     const wf = settings.waFields ?? {};
     const lines = [];
-    if (wf.caseId !== false) lines.push(`*Case ID:* ${caseId || '—'}`);
-    if (wf.patientName !== false) lines.push(`*Patient Name:*`);
-    if (wf.notes !== false && notes.trim()) lines.push(`*Notes:* ${notes.trim()}`);
+    if (wf.caseId      !== false)                              lines.push(`*Case ID:* ${caseId || '—'}`);
+    if (wf.doctorName  !== false && doctorName.trim())        lines.push(`*Doctor:* ${doctorName.trim()}`);
+    if (wf.patientName !== false && patientName.trim())       lines.push(`*Patient:* ${patientName.trim()}`);
+    if (wf.notes       !== false && notes.trim())             lines.push(`*Notes:* ${notes.trim()}`);
     lines.push('');
     lines.push('*Components:*');
     items.forEach(item => {
@@ -525,10 +530,40 @@ export default function OrderSlip() {
                   <Label>Case ID *</Label>
                   <Input value={caseId} onChange={e => setCaseId(e.target.value)} placeholder="e.g. SSAA452015AH" />
                 </div>
-                <div className="space-y-1.5">
-                  <Label>Instructions / Notes</Label>
-                  <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Please arrange pickup" />
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1.5">
+                    <Label>Doctor Name</Label>
+                    <Input value={doctorName} onChange={e => setDoctorName(e.target.value)} placeholder="Dr. Smith" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>Patient Name</Label>
+                    <Input value={patientName} onChange={e => setPatientName(e.target.value)} placeholder="John Doe" />
+                  </div>
                 </div>
+                {/* Notes — collapsed by default */}
+                {(showNotes || notes) ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Instructions / Notes</Label>
+                      {!notes && (
+                        <button type="button" onClick={() => setShowNotes(false)}
+                          className="text-muted-foreground hover:text-foreground transition-colors">
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                    <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="e.g. Please arrange pickup" className="text-sm" />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowNotes(true)}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Add instructions / notes
+                  </button>
+                )}
               </div>
 
               {/* Items list */}
@@ -652,11 +687,12 @@ export default function OrderSlip() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-1">
-            {caseId && (
-              <p className="text-sm">
-                <span className="text-muted-foreground">Case:</span>{' '}
-                <strong>{caseId}</strong>
-              </p>
+            {(caseId || doctorName || patientName) && (
+              <div className="text-sm space-y-0.5">
+                {caseId      && <p><span className="text-muted-foreground">Case:</span>    <strong>{caseId}</strong></p>}
+                {doctorName  && <p><span className="text-muted-foreground">Doctor:</span>  <strong>{doctorName}</strong></p>}
+                {patientName && <p><span className="text-muted-foreground">Patient:</span> <strong>{patientName}</strong></p>}
+              </div>
             )}
             <div className="rounded-md border border-border divide-y divide-border max-h-52 overflow-y-auto text-xs">
               {items.map(item => (
@@ -754,11 +790,23 @@ export default function OrderSlip() {
           </div>
 
           {/* Case info */}
-          <div style={{ display: 'flex', gap: '24px', marginBottom: '20px', background: '#f0fdf4', borderRadius: '8px', padding: '14px', border: '1px solid #bbf7d0' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', marginBottom: '20px', background: '#f0fdf4', borderRadius: '8px', padding: '14px', border: '1px solid #bbf7d0' }}>
             <div>
               <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#16a34a', fontWeight: '600', letterSpacing: '0.5px', marginBottom: '2px' }}>Case ID</div>
               <div style={{ fontSize: '16px', fontWeight: '700' }}>{caseId || '—'}</div>
             </div>
+            {doctorName && (
+              <div>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#16a34a', fontWeight: '600', letterSpacing: '0.5px', marginBottom: '2px' }}>Doctor</div>
+                <div style={{ fontSize: '14px', fontWeight: '600' }}>{doctorName}</div>
+              </div>
+            )}
+            {patientName && (
+              <div>
+                <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#16a34a', fontWeight: '600', letterSpacing: '0.5px', marginBottom: '2px' }}>Patient</div>
+                <div style={{ fontSize: '14px', fontWeight: '600' }}>{patientName}</div>
+              </div>
+            )}
             {notes && (
               <div>
                 <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#16a34a', fontWeight: '600', letterSpacing: '0.5px', marginBottom: '2px' }}>Instructions</div>

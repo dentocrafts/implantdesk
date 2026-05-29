@@ -3,9 +3,11 @@ import { createContext, useContext, useState } from 'react';
 const DispatchContext = createContext(null);
 
 export function DispatchProvider({ children }) {
-  const [caseId, setCaseId] = useState('');
-  const [notes, setNotes] = useState('');
-  const [items, setItems] = useState([]);
+  const [caseId,      setCaseId]      = useState('');
+  const [doctorName,  setDoctorName]  = useState('');
+  const [patientName, setPatientName] = useState('');
+  const [notes,       setNotes]       = useState('');
+  const [items,       setItems]       = useState([]);
 
   function addItem(component, qty = 1) {
     setItems(prev => {
@@ -26,6 +28,8 @@ export function DispatchProvider({ children }) {
 
   function clearDispatch() {
     setCaseId('');
+    setDoctorName('');
+    setPatientName('');
     setNotes('');
     setItems([]);
   }
@@ -34,8 +38,10 @@ export function DispatchProvider({ children }) {
 
   return (
     <DispatchContext.Provider value={{
-      caseId, setCaseId,
-      notes, setNotes,
+      caseId,      setCaseId,
+      doctorName,  setDoctorName,
+      patientName, setPatientName,
+      notes,       setNotes,
       items, addItem, removeItem, updateQty, clearDispatch,
       totalItems,
     }}>
