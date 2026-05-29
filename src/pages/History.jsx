@@ -25,12 +25,21 @@ function isDispatch(m) {
 function parseDispatchInfo(notes) {
   if (!notes) return {};
   const result = {};
+  const extras = [];
   notes.split(' · ').forEach(seg => {
-    if (seg.startsWith('Case: '))    result.caseId   = seg.slice(6).trim();
-    if (seg.startsWith('Dr: '))      result.doctor   = seg.slice(4).trim();
-    if (seg.startsWith('Patient: ')) result.patient  = seg.slice(9).trim();
+    if      (seg.startsWith('Case: '))    result.caseId  = seg.slice(6).trim();
+    else if (seg.startsWith('Dr: '))      result.doctor  = seg.slice(4).trim();
+    else if (seg.startsWith('Patient: ')) result.patient = seg.slice(9).trim();
+    else if (seg.trim())                  extras.push(seg.trim());
   });
+  if (extras.length) result.extra = extras.join(' · ');
   return result;
+}
+
+// True when notes contain at least one structured field
+function hasStructuredNotes(notes) {
+  if (!notes) return false;
+  return notes.includes('Case: ') || notes.includes('Dr: ') || notes.includes('Patient: ');
 }
 
 // ── Movement type display config ──────────────────────────────────────
@@ -123,7 +132,6 @@ function MovementDetailDialog({ movement: m, open, onClose }) {
   const disp = isDispatch(m);
   const cfg  = cfgFor(m);
   const Icon = cfg.icon;
-  const info = disp ? parseDispatchInfo(m.notes) : {};
   const date = new Date(m.created_at);
 
   const { className: sysClass, style: sysStyle } =
@@ -213,33 +221,36 @@ function MovementDetailDialog({ movement: m, open, onClose }) {
             )}
           </DetailRow>
 
-          {/* Dispatch-specific fields */}
-          {disp && (
-            <>
-              {info.caseId && (
-                <DetailRow icon={FileText} label="Case ID">
-                  <span className="font-mono font-semibold">{info.caseId}</span>
-                </DetailRow>
-              )}
-              {info.doctor && (
-                <DetailRow icon={Stethoscope} label="Doctor">
-                  <span>{info.doctor}</span>
-                </DetailRow>
-              )}
-              {info.patient && (
-                <DetailRow icon={User} label="Patient">
-                  <span>{info.patient}</span>
-                </DetailRow>
-              )}
-            </>
-          )}
-
-          {/* Regular notes */}
-          {!disp && m.notes && (
-            <DetailRow icon={FileText} label="Notes">
-              <span className="text-muted-foreground">{m.notes}</span>
-            </DetailRow>
-          )}
+          {/* Case / Doctor / Patient — shown for any movement that has them */}
+          {m.notes && (() => {
+            const parsed = parseDispatchInfo(m.notes);
+            const structured = !!(parsed.caseId || parsed.doctor || parsed.patient);
+            return (
+              <>
+                {parsed.caseId  && (
+                  <DetailRow icon={FileText} label="Case ID">
+                    <span className="font-mono font-semibold">{parsed.caseId}</span>
+                  </DetailRow>
+                )}
+                {parsed.doctor  && (
+                  <DetailRow icon={Stethoscope} label="Doctor">
+                    <span>{parsed.doctor}</span>
+                  </DetailRow>
+                )}
+                {parsed.patient && (
+                  <DetailRow icon={User} label="Patient">
+                    <span>{parsed.patient}</span>
+                  </DetailRow>
+                )}
+                {/* Extra / plain notes */}
+                {(parsed.extra || !structured) && (
+                  <DetailRow icon={FileText} label="Notes">
+                    <span className="text-muted-foreground">{parsed.extra ?? m.notes}</span>
+                  </DetailRow>
+                )}
+              </>
+            );
+          })()}
 
         </div>
       </DialogContent>
@@ -497,11 +508,27 @@ export default function HistoryPage() {
                               </div>
                             )}
 
-                            {/* Regular movement notes */}
+                            {/* Non-dispatch notes: structured chips or plain text */}
                             {!disp && m.notes && (
-                              <span className="text-[10px] text-muted-foreground line-clamp-1 max-w-[220px]">
-                                {m.notes}
-                              </span>
+                              hasStructuredNotes(m.notes) ? (() => {
+                                const p = parseDispatchInfo(m.notes);
+                                return (
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    {p.caseId && (
+                                      <span className="inline-flex items-center rounded bg-slate-100 border border-slate-200 px-1.5 py-0 text-[10px] font-semibold text-slate-700">
+                                        Case&nbsp;{p.caseId}
+                                      </span>
+                                    )}
+                                    {p.doctor  && <span className="text-[10px] text-muted-foreground">Dr.&nbsp;{p.doctor}</span>}
+                                    {p.patient && <span className="text-[10px] text-muted-foreground">·&nbsp;{p.patient}</span>}
+                                    {p.extra   && <span className="text-[10px] text-muted-foreground">·&nbsp;{p.extra}</span>}
+                                  </div>
+                                );
+                              })() : (
+                                <span className="text-[10px] text-muted-foreground line-clamp-1 max-w-[220px]">
+                                  {m.notes}
+                                </span>
+                              )
                             )}
                           </div>
                         </div>

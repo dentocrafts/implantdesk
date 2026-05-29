@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ArrowUpRight, Undo2, PackagePlus, SlidersHorizontal, History, Download, X } from 'lucide-react';
+import { ArrowUpRight, Undo2, PackagePlus, SlidersHorizontal, History, Download, X, Plus } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,28 +77,49 @@ const MOVEMENT_TYPES = {
 
 // ── Dialog ────────────────────────────────────────────────────────────
 function StockDialog({ component, type, open, onClose }) {
-  const [qty, setQty] = useState(1);
-  const [notes, setNotes] = useState('');
+  const [qty,         setQty]         = useState(1);
+  const [caseId,      setCaseId]      = useState('');
+  const [doctorName,  setDoctorName]  = useState('');
+  const [patientName, setPatientName] = useState('');
+  const [notes,       setNotes]       = useState('');
+  const [showNotes,   setShowNotes]   = useState(false);
   const logMovement = useLogStockMovement();
-  const cfg = MOVEMENT_TYPES[type] || MOVEMENT_TYPES.out;
+  const cfg  = MOVEMENT_TYPES[type] || MOVEMENT_TYPES.out;
   const Icon = cfg.icon;
+  // out / in use structured fields; received keeps plain notes
+  const isStructured = type === 'out' || type === 'in';
 
   if (!component) return null;
+
+  function resetForm() {
+    setQty(1);
+    setCaseId(''); setDoctorName(''); setPatientName('');
+    setNotes(''); setShowNotes(false);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (!qty || qty <= 0) return;
+
+    const combinedNotes = isStructured
+      ? [
+          caseId.trim()      && `Case: ${caseId.trim()}`,
+          doctorName.trim()  && `Dr: ${doctorName.trim()}`,
+          patientName.trim() && `Patient: ${patientName.trim()}`,
+          notes.trim(),
+        ].filter(Boolean).join(' · ') || null
+      : notes.trim() || null;
+
     try {
       await logMovement.mutateAsync({
-        component_id: component.id,
+        component_id:  component.id,
         type,
-        quantity: Number(qty),
-        notes,
+        quantity:      Number(qty),
+        notes:         combinedNotes,
         current_stock: component.stock_qty,
       });
       toast.success(`${cfg.label}: ${cfg.sign}${qty} × ${component.name}`);
-      setQty(1);
-      setNotes('');
+      resetForm();
       onClose();
     } catch (err) {
       toast.error('Failed: ' + err.message);
@@ -106,7 +127,7 @@ function StockDialog({ component, type, open, onClose }) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={v => { if (!v) { resetForm(); onClose(); } }}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -134,16 +155,61 @@ function StockDialog({ component, type, open, onClose }) {
         <Separator />
 
         <form onSubmit={handleSubmit} className="space-y-3 pt-1">
+          {/* Quantity — always shown */}
           <div className="space-y-1.5">
             <Label htmlFor="qty">Quantity *</Label>
             <Input id="qty" type="number" min={1} value={qty} onChange={e => setQty(e.target.value)} required autoFocus />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="notes">Notes (optional)</Label>
-            <Textarea id="notes" placeholder={cfg.notesPlaceholder} value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
-          </div>
+
+          {isStructured ? (
+            <>
+              {/* Case ID */}
+              <div className="space-y-1.5">
+                <Label htmlFor="dlg-caseId">Case ID</Label>
+                <Input id="dlg-caseId" value={caseId} onChange={e => setCaseId(e.target.value)} placeholder="e.g. SSAA452015AH" />
+              </div>
+              {/* Doctor + Patient side by side */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="dlg-doctor">Doctor Name</Label>
+                  <Input id="dlg-doctor" value={doctorName} onChange={e => setDoctorName(e.target.value)} placeholder="Dr. Smith" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="dlg-patient">Patient Name</Label>
+                  <Input id="dlg-patient" value={patientName} onChange={e => setPatientName(e.target.value)} placeholder="John Doe" />
+                </div>
+              </div>
+              {/* Collapsible extra notes */}
+              {(showNotes || notes) ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-muted-foreground">Additional Notes</Label>
+                    {!notes && (
+                      <button type="button" onClick={() => setShowNotes(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                  <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder={cfg.notesPlaceholder} />
+                </div>
+              ) : (
+                <button type="button" onClick={() => setShowNotes(true)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                  <Plus className="h-3 w-3" />
+                  Add additional notes
+                </button>
+              )}
+            </>
+          ) : (
+            /* Received — plain notes */
+            <div className="space-y-1.5">
+              <Label htmlFor="dlg-notes">Notes (optional)</Label>
+              <Textarea id="dlg-notes" placeholder={cfg.notesPlaceholder} value={notes} onChange={e => setNotes(e.target.value)} rows={2} />
+            </div>
+          )}
+
           <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => { resetForm(); onClose(); }}>Cancel</Button>
             <Button type="submit" disabled={logMovement.isPending} className={cfg.submitClass}>
               {logMovement.isPending ? 'Saving…' : cfg.submitLabel}
             </Button>
