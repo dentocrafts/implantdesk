@@ -323,7 +323,6 @@ export default function OrderSlip() {
         return (
           c.name.toLowerCase().includes(q) ||
           c.component_code?.toLowerCase().includes(q) ||
-          c.manufacturer_code?.toLowerCase().includes(q) ||
           (isNum && (c.gingival_height_mm == num || c.platform_diameter == num))
         );
       })

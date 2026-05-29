@@ -80,9 +80,6 @@ export default function ComponentCard({ component, onViewDetail }) {
         {/* Codes */}
         <div className="space-y-0.5" onClick={e => e.stopPropagation()}>
           <CopyableCode code={component.component_code} />
-          {component.manufacturer_code && (
-            <CopyableCode code={component.manufacturer_code} />
-          )}
         </div>
 
         {/* Price + stock */}

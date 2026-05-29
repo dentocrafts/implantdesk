@@ -98,12 +98,6 @@ export default function ComponentDetailModal({ component, open, onClose }) {
                 <div className="text-xs text-muted-foreground mb-1">Component Code</div>
                 <CopyableCode code={component.component_code} className="rounded px-2 py-1 bg-muted hover:bg-accent" />
               </div>
-              {component.manufacturer_code && (
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">Manufacturer Code</div>
-                  <CopyableCode code={component.manufacturer_code} className="rounded px-2 py-1 bg-muted hover:bg-accent" />
-                </div>
-              )}
             </div>
 
             {/* Add to Dispatch */}

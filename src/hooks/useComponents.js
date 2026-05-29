@@ -22,7 +22,7 @@ export function useComponents(filters = {}) {
         const num     = parseFloat(numStr);
         const isNum   = numStr !== '' && !isNaN(num) && isFinite(num);
 
-        const textPart = `name.ilike.%${searchTerm}%,component_code.ilike.%${searchTerm}%,manufacturer_code.ilike.%${searchTerm}%`;
+        const textPart = `name.ilike.%${searchTerm}%,component_code.ilike.%${searchTerm}%`;
         const numPart  = isNum ? `,gingival_height_mm.eq.${num},platform_diameter.eq.${num}` : '';
         query = query.or(textPart + numPart);
       }

@@ -65,10 +65,10 @@ export default function Catalog() {
 
   function exportCSV() {
     if (!components?.length) return;
-    const headers = ['Name', 'System', 'Abutment Type', 'GH (mm)', 'Platform (mm)', 'Material', 'Component Code', 'Mfr Code', 'Price (INR)', 'Stock'];
+    const headers = ['Name', 'System', 'Abutment Type', 'GH (mm)', 'Platform (mm)', 'Material', 'Component Code', 'Price (INR)', 'Stock'];
     const rows = components.map(c => [
       c.name, c.system, c.abutment_type, c.gingival_height_mm, c.platform_diameter,
-      c.material, c.component_code, c.manufacturer_code, c.price, c.stock_qty,
+      c.material, c.component_code, c.price, c.stock_qty,
     ]);
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

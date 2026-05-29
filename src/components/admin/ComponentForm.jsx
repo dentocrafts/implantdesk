@@ -174,7 +174,6 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
       platform_diameter:  component?.platform_diameter  || '',
       material:           component?.material           || '',
       component_code:     component?.component_code     || '',
-      manufacturer_code:  component?.manufacturer_code  || '',
       price:              component?.price              || '',
       stock_qty:          component?.stock_qty          || 0,
       description:        component?.description        || '',
@@ -386,12 +385,6 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
                 setValueAs: v => v ? v.toUpperCase() : v,
               })}
             />
-          </div>
-
-          {/* Manufacturer Code */}
-          <div className="space-y-1.5">
-            <Label htmlFor="mc">Manufacturer Code</Label>
-            <Input id="mc" {...register('manufacturer_code')} placeholder="OEM part number" />
           </div>
 
           {/* Price */}
