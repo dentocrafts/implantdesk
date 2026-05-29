@@ -16,9 +16,15 @@ export function useComponents(filters = {}) {
       }
 
       if (filters.search) {
-        query = query.or(
-          `name.ilike.%${filters.search}%,component_code.ilike.%${filters.search}%,manufacturer_code.ilike.%${filters.search}%`
-        );
+        const searchTerm = filters.search.trim();
+        // Strip a trailing "mm" so "2mm" → 2, "4.5mm" → 4.5
+        const numStr  = searchTerm.replace(/mm$/i, '').trim();
+        const num     = parseFloat(numStr);
+        const isNum   = numStr !== '' && !isNaN(num) && isFinite(num);
+
+        const textPart = `name.ilike.%${searchTerm}%,component_code.ilike.%${searchTerm}%,manufacturer_code.ilike.%${searchTerm}%`;
+        const numPart  = isNum ? `,gingival_height_mm.eq.${num},platform_diameter.eq.${num}` : '';
+        query = query.or(textPart + numPart);
       }
       if (filters.systems?.length) {
         query = query.in('system', filters.systems);

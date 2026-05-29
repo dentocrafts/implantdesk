@@ -1,17 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
-import { Plus, Minus, Printer, Search, FileText, RotateCcw, LayoutGrid, ClipboardList, X, MessageSquare, Check, Trash2 } from 'lucide-react';
+import { Plus, Minus, Printer, Search, FileText, RotateCcw, LayoutGrid, ClipboardList, X, MessageSquare, Check, Trash2, AlertTriangle, Truck } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import DentalPlaceholder from '@/components/common/DentalPlaceholder';
 import CopyableCode from '@/components/common/CopyableCode';
 import { useComponents } from '@/hooks/useComponents';
+import { useDispatchStock } from '@/hooks/useStock';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -115,9 +116,14 @@ function DispatchComponentModal({ component, open, onClose, onAdd, currentQty })
 function CatalogCard({ component, onAdd, onViewDetail, dispatchQty }) {
   const { settings } = useSettings();
   const { className: sysClass, style: sysStyle } = getSystemStyle(component.system, settings.systemColors);
+  const isOos = component.stock_qty === 0;
+
   return (
     <div
-      className="flex items-center gap-2.5 p-2 rounded-lg border border-border bg-card hover:border-primary/30 hover:bg-accent/30 transition-colors cursor-pointer"
+      className={cn(
+        'flex items-center gap-2.5 p-2 rounded-lg border bg-card hover:border-primary/30 hover:bg-accent/30 transition-colors cursor-pointer',
+        isOos ? 'border-destructive/30' : 'border-border',
+      )}
       onClick={() => onViewDetail(component)}
     >
       {/* Thumbnail */}
@@ -144,6 +150,12 @@ function CatalogCard({ component, onAdd, onViewDetail, dispatchQty }) {
             <CopyableCode code={component.component_code} className="text-[10px]" />
           </span>
         </div>
+        {/* Stock count */}
+        <div className="mt-0.5">
+          {isOos
+            ? <span className="text-[10px] font-medium text-destructive">Out of Stock</span>
+            : <span className="text-[10px] text-muted-foreground">{component.stock_qty} in stock</span>}
+        </div>
       </div>
 
       {/* Add button */}
@@ -151,9 +163,11 @@ function CatalogCard({ component, onAdd, onViewDetail, dispatchQty }) {
         onClick={e => { e.stopPropagation(); onAdd(component); }}
         className={cn(
           'shrink-0 flex items-center gap-1 rounded-md px-2 h-7 text-xs font-semibold transition-colors',
-          dispatchQty > 0
-            ? 'bg-primary/10 text-primary hover:bg-primary/20'
-            : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
+          isOos
+            ? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
+            : dispatchQty > 0
+              ? 'bg-primary/10 text-primary hover:bg-primary/20'
+              : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
         )}
       >
         <Plus className="h-3 w-3" />
@@ -168,12 +182,16 @@ export default function OrderSlip() {
   const { caseId, setCaseId, notes, setNotes, items, addItem, removeItem, updateQty, clearDispatch } = useDispatchNote();
   const { settings } = useSettings();
   const { canViewPricing, canPrintDispatch } = usePermissions();
-  const [search,          setSearch]          = useState('');
-  const [slipNo]                              = useState(SlipNumber);
-  const [mobileView,      setMobileView]      = useState('catalog');
-  const [detailComponent, setDetailComponent] = useState(null);
-  const [waCopied,        setWaCopied]        = useState(false);
-  const [selectedItems,   setSelectedItems]   = useState(new Set());
+  const [search,           setSearch]          = useState('');
+  const [slipNo]                               = useState(SlipNumber);
+  const [mobileView,       setMobileView]      = useState('catalog');
+  const [detailComponent,  setDetailComponent] = useState(null);
+  const [waCopied,         setWaCopied]        = useState(false);
+  const [selectedItems,      setSelectedItems]      = useState(new Set());
+  const [outOfStockTarget,   setOutOfStockTarget]   = useState(null);
+  const [confirmingDispatch, setConfirmingDispatch] = useState(false);
+  const dispatchStock = useDispatchStock();
+  // outOfStockTarget: null | { component, qty }
 
   // ── Drag-select refs for the dispatch items list ─────────────────────
   const listRef              = useRef(null); // the scrollable items container
@@ -293,16 +311,49 @@ export default function OrderSlip() {
   const { data: components = [] } = useComponents({});
 
   const filtered = search.trim().length > 0
-    ? components.filter(c =>
-        c.name.toLowerCase().includes(search.toLowerCase()) ||
-        c.component_code?.toLowerCase().includes(search.toLowerCase()) ||
-        c.manufacturer_code?.toLowerCase().includes(search.toLowerCase())
-      )
+    ? components.filter(c => {
+        const q      = search.trim().toLowerCase();
+        const numStr = q.replace(/mm$/i, '').trim();
+        const num    = parseFloat(numStr);
+        const isNum  = numStr !== '' && !isNaN(num) && isFinite(num);
+        return (
+          c.name.toLowerCase().includes(q) ||
+          c.component_code?.toLowerCase().includes(q) ||
+          c.manufacturer_code?.toLowerCase().includes(q) ||
+          (isNum && (c.gingival_height_mm == num || c.platform_diameter == num))
+        );
+      })
     : components;
 
   function handleAdd(component, qty = 1) {
+    if (component.stock_qty === 0) {
+      setOutOfStockTarget({ component, qty });
+      return;
+    }
     addItem(component, qty);
     toast.success('Added to dispatch', { description: component.name, duration: 1500 });
+  }
+
+  function confirmAddOutOfStock() {
+    if (!outOfStockTarget) return;
+    addItem(outOfStockTarget.component, outOfStockTarget.qty);
+    toast.success('Added to dispatch', { description: outOfStockTarget.component.name, duration: 1500 });
+    setOutOfStockTarget(null);
+  }
+
+  async function handleConfirmDispatch() {
+    try {
+      await dispatchStock.mutateAsync({ items, caseId, notes });
+      const count = items.length;
+      clearDispatch();
+      setConfirmingDispatch(false);
+      toast.success('Dispatched!', {
+        description: `${count} component${count !== 1 ? 's' : ''} dispatched. Stock updated.`,
+        duration: 3000,
+      });
+    } catch (err) {
+      toast.error('Dispatch failed', { description: err.message, duration: 4000 });
+    }
   }
 
   function getDispatchQty(id) {
@@ -372,6 +423,16 @@ export default function OrderSlip() {
                 }
                 {waCopied ? 'Copied!' : 'Copy for WhatsApp'}
               </Button>
+              {items.length > 0 && (
+                <Button
+                  size="sm"
+                  onClick={() => setConfirmingDispatch(true)}
+                  className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Truck className="h-3.5 w-3.5" />
+                  Dispatch
+                </Button>
+              )}
               {canPrintDispatch && (
                 <Button onClick={() => window.print()} disabled={!items.length} className="gap-2">
                   <Printer className="h-4 w-4" />
@@ -415,7 +476,7 @@ export default function OrderSlip() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
                   className="pl-9"
-                  placeholder="Search components…"
+                  placeholder="Search by name, code, or size — e.g. 4.5 or 2mm…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                 />
@@ -546,7 +607,15 @@ export default function OrderSlip() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-medium line-clamp-1">{item.name}</div>
-                            <CopyableCode code={item.component_code} className="text-[10px]" />
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <CopyableCode code={item.component_code} className="text-[10px]" />
+                              <span className={cn(
+                                'text-[10px]',
+                                item.stock_qty === 0 ? 'text-destructive font-medium' : 'text-muted-foreground'
+                              )}>
+                                · {item.stock_qty === 0 ? 'No stock' : `${item.stock_qty} in stock`}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex items-center gap-0.5 shrink-0">
                             <button onClick={() => updateQty(item.id, item.qty - 1)} className="w-5 h-5 flex items-center justify-center rounded border border-border hover:bg-accent text-xs font-bold">−</button>
@@ -572,6 +641,78 @@ export default function OrderSlip() {
           </div>
         </div>
       </Layout>
+
+      {/* ── Confirm Dispatch dialog ── */}
+      <Dialog open={confirmingDispatch} onOpenChange={v => { if (!v) setConfirmingDispatch(false); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="h-4 w-4 shrink-0" />
+              Confirm Dispatch
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            {caseId && (
+              <p className="text-sm">
+                <span className="text-muted-foreground">Case:</span>{' '}
+                <strong>{caseId}</strong>
+              </p>
+            )}
+            <div className="rounded-md border border-border divide-y divide-border max-h-52 overflow-y-auto text-xs">
+              {items.map(item => (
+                <div key={item.id} className="flex items-center gap-2 px-3 py-1.5">
+                  <span className="font-medium line-clamp-1 flex-1 min-w-0">{item.name}</span>
+                  <span className="shrink-0 font-semibold">× {item.qty}</span>
+                  <span className={cn('shrink-0', item.stock_qty === 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                    ({item.stock_qty} in stock)
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+              Stock quantities will be reduced by the dispatched amounts. This cannot be undone automatically.
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setConfirmingDispatch(false)} disabled={dispatchStock.isPending}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleConfirmDispatch}
+              disabled={dispatchStock.isPending}
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <Truck className="h-3.5 w-3.5" />
+              {dispatchStock.isPending ? 'Dispatching…' : 'Dispatch & Deduct Stock'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Out of Stock disclaimer dialog ── */}
+      <Dialog open={!!outOfStockTarget} onOpenChange={v => { if (!v) setOutOfStockTarget(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+              Out of Stock
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-1">
+            <p className="text-sm">
+              <strong>{outOfStockTarget?.component.name}</strong> currently has <strong>no stock</strong> in inventory.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              You can still add it to the dispatch slip, but please verify availability before dispatching.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setOutOfStockTarget(null)}>Cancel</Button>
+            <Button size="sm" onClick={confirmAddOutOfStock}>Add Anyway</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Component detail modal ── */}
       <DispatchComponentModal

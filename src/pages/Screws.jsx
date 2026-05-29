@@ -101,7 +101,7 @@ export default function Screws() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Search by name, component code, or manufacturer code…"
+              placeholder="Search by name, code, or size — e.g. 10mm or 4.5…"
               value={filters.search}
               onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
               className="pl-9 pr-9"

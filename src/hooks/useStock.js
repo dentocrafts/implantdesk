@@ -65,6 +65,45 @@ export function useLogBatchStockMovements() {
   });
 }
 
+/**
+ * Batch-dispatches items from the dispatch slip.
+ * Each item may have its own qty; stock is reduced per item.
+ */
+export function useDispatchStock() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({ items, caseId, notes: dispatchNotes }) => {
+      const noteText = [
+        caseId && `Case: ${caseId}`,
+        dispatchNotes && dispatchNotes.trim(),
+      ].filter(Boolean).join(' · ') || 'Dispatched via slip';
+
+      const movementRows = items.map(item => ({
+        component_id: item.id,
+        type:         'out',
+        quantity:     item.qty,
+        notes:        noteText,
+        created_by:   user.id,
+      }));
+
+      const { error: moveErr } = await supabase.from('stock_movements').insert(movementRows);
+      if (moveErr) throw moveErr;
+
+      await Promise.all(items.map(item =>
+        supabase
+          .from('implant_components')
+          .update({ stock_qty: Math.max(0, (item.stock_qty ?? 0) - item.qty) })
+          .eq('id', item.id)
+      ));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stock_movements'] });
+      qc.invalidateQueries({ queryKey: ['components'] });
+    },
+  });
+}
+
 export function useLogStockMovement() {
   const qc = useQueryClient();
   const { user } = useAuth();
