@@ -35,22 +35,25 @@ export default function Screws() {
   const { data: filterOptions } = useFilterOptions('screw');
 
   // Strip out any values the user has hidden in Settings → Catalog Options
-  // Strip out any values the user has hidden or deleted in Settings → Catalog Options
+  // Strip out any values the user has hidden or deleted in Settings → Screw Catalog Options
   const visibleFilterOptions = useMemo(() => {
     if (!filterOptions) return filterOptions;
-    const hidSys  = settings.hiddenSystems      || [];
-    const hidType = settings.hiddenScrewTypes   || [];  // screws use hiddenScrewTypes
-    const hidMat  = settings.hiddenMaterials    || [];
-    const delSys  = settings.deletedSystems     || [];
-    const delType = settings.deletedScrewTypes  || [];
-    const delMat  = settings.deletedMaterials   || [];
+    const hidSys  = settings.hiddenScrewSystems  || [];
+    const hidType = settings.hiddenScrewTypes    || [];
+    const hidMat  = settings.hiddenScrewMaterials || [];
+    const delSys  = settings.deletedScrewSystems  || [];
+    const delType = settings.deletedScrewTypes   || [];
+    const delMat  = settings.deletedScrewMaterials || [];
     return {
       ...filterOptions,
       systems:       filterOptions.systems.filter(s       => !hidSys.includes(s)  && !delSys.includes(s)),
       abutmentTypes: filterOptions.abutmentTypes.filter(t => !hidType.includes(t) && !delType.includes(t)),
       materials:     filterOptions.materials.filter(m     => !hidMat.includes(m)  && !delMat.includes(m)),
     };
-  }, [filterOptions, settings.hiddenSystems, settings.hiddenScrewTypes, settings.hiddenMaterials, settings.deletedSystems, settings.deletedScrewTypes, settings.deletedMaterials]);
+  }, [filterOptions,
+    settings.hiddenScrewSystems, settings.hiddenScrewTypes, settings.hiddenScrewMaterials,
+    settings.deletedScrewSystems, settings.deletedScrewTypes, settings.deletedScrewMaterials,
+  ]);
 
   function handleClearFilters() {
     setFilters(f => ({

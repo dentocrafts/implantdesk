@@ -17,16 +17,21 @@ export const SETTINGS_DEFAULTS = {
   customAbutmentTypes: [],
   customScrewTypes: [],
   customMaterials: [],
-  // Built-in options the user has chosen to hide from dropdowns
+  // Built-in options the user has chosen to hide from dropdowns (Component Catalog)
   hiddenSystems: [],
   hiddenAbutmentTypes: [],
-  hiddenScrewTypes: [],
   hiddenMaterials: [],
-  // Built-in options the user has permanently deleted (removed from all dropdowns and filters)
+  // Built-in options the user has permanently deleted (Component Catalog)
   deletedSystems: [],
   deletedAbutmentTypes: [],
-  deletedScrewTypes: [],
   deletedMaterials: [],
+  // Screw Catalog — separate hide/delete controls
+  hiddenScrewSystems: [],
+  deletedScrewSystems: [],
+  hiddenScrewTypes: [],
+  deletedScrewTypes: [],
+  hiddenScrewMaterials: [],
+  deletedScrewMaterials: [],
   waFields: {
     caseId: true,
     patientName: true,

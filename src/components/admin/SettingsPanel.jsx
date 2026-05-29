@@ -562,10 +562,13 @@ export default function SettingsPanel({ isAdmin = true }) {
   const isDirty = JSON.stringify(draft) !== JSON.stringify(settings);
 
   // Pre-filter built-in lists to exclude permanently deleted items
-  const activeSystems      = IMPLANT_SYSTEMS.filter(s => !(settings.deletedSystems      || []).includes(s));
-  const activeAbutments    = ABUTMENT_TYPES.filter(t  => !(settings.deletedAbutmentTypes || []).includes(t));
-  const activeScrewTypes   = SCREW_TYPES.filter(t    => !(settings.deletedScrewTypes     || []).includes(t));
-  const activeMaterials    = MATERIALS.filter(m       => !(settings.deletedMaterials     || []).includes(m));
+  const activeSystems      = IMPLANT_SYSTEMS.filter(s => !(settings.deletedSystems       || []).includes(s));
+  const activeAbutments    = ABUTMENT_TYPES.filter(t  => !(settings.deletedAbutmentTypes  || []).includes(t));
+  const activeMaterials    = MATERIALS.filter(m        => !(settings.deletedMaterials      || []).includes(m));
+  // Screw-specific (systems + materials reuse the same built-in list, separately deletable)
+  const activeScrewSystems = IMPLANT_SYSTEMS.filter(s => !(settings.deletedScrewSystems  || []).includes(s));
+  const activeScrewTypes   = SCREW_TYPES.filter(t     => !(settings.deletedScrewTypes    || []).includes(t));
+  const activeScrewMats    = MATERIALS.filter(m        => !(settings.deletedScrewMaterials|| []).includes(m));
 
   return (
     <div className="space-y-5 max-w-2xl">
@@ -680,10 +683,10 @@ export default function SettingsPanel({ isAdmin = true }) {
         </SettingRow>
       </SettingSection>
 
-      {/* ── Catalog Options ── */}
+      {/* ── Component Catalog Options ── */}
       {isAdmin && (
-        <SettingSection title="Catalog Options"
-          description="Add, hide, or delete options from the System, Type, and Material dropdowns. Drag to multi-select. Changes apply immediately.">
+        <SettingSection title="Component Catalog Options"
+          description="Controls the System, Abutment Type, and Material options on the Catalog page. Drag to multi-select. Changes apply immediately.">
           <CatalogOptionList
             label="Implant Systems" addLabel="System"
             builtIn={activeSystems}
@@ -715,6 +718,43 @@ export default function SettingsPanel({ isAdmin = true }) {
             onBatchDeleteCustom={items  => batchDeleteCustom('customAbutmentTypes', items)}
           />
           <CatalogOptionList
+            label="Materials" addLabel="Material"
+            builtIn={activeMaterials}
+            custom={settings.customMaterials    || []}
+            hidden={settings.hiddenMaterials    || []}
+            onToggleHidden={v     => toggleHidden('hiddenMaterials', v)}
+            onDeleteBuiltIn={v    => deleteBuiltIn('deletedMaterials', 'hiddenMaterials', v)}
+            onDeleteCustom={v     => deleteCustom('customMaterials', v)}
+            onAddCustom={v        => addCustom('customMaterials', v)}
+            onBatchHide={items          => batchHide('hiddenMaterials', items)}
+            onBatchShow={items          => batchShow('hiddenMaterials', items)}
+            onBatchDeleteBuiltIn={items => batchDeleteBuiltIn('deletedMaterials', 'hiddenMaterials', items)}
+            onBatchDeleteCustom={items  => batchDeleteCustom('customMaterials', items)}
+          />
+        </SettingSection>
+      )}
+
+      {/* ── Screw Catalog Options ── */}
+      {isAdmin && (
+        <SettingSection title="Screw Catalog Options"
+          description="Controls the System, Screw Type, and Material options on the Screws page. Managed independently from the Component Catalog.">
+          <CatalogOptionList
+            label="Implant Systems" addLabel="System"
+            builtIn={activeScrewSystems}
+            custom={settings.customSystems       || []}
+            hidden={settings.hiddenScrewSystems  || []}
+            colors={settings.systemColors        || {}}
+            onColorChange={handleColorChange}
+            onToggleHidden={v     => toggleHidden('hiddenScrewSystems', v)}
+            onDeleteBuiltIn={v    => deleteBuiltIn('deletedScrewSystems', 'hiddenScrewSystems', v)}
+            onDeleteCustom={v     => deleteCustom('customSystems', v)}
+            onAddCustom={v        => addCustom('customSystems', v)}
+            onBatchHide={items          => batchHide('hiddenScrewSystems', items)}
+            onBatchShow={items          => batchShow('hiddenScrewSystems', items)}
+            onBatchDeleteBuiltIn={items => batchDeleteBuiltIn('deletedScrewSystems', 'hiddenScrewSystems', items)}
+            onBatchDeleteCustom={items  => batchDeleteCustom('customSystems', items)}
+          />
+          <CatalogOptionList
             label="Screw Types" addLabel="Screw Type"
             builtIn={activeScrewTypes}
             custom={settings.customScrewTypes    || []}
@@ -730,16 +770,16 @@ export default function SettingsPanel({ isAdmin = true }) {
           />
           <CatalogOptionList
             label="Materials" addLabel="Material"
-            builtIn={activeMaterials}
-            custom={settings.customMaterials    || []}
-            hidden={settings.hiddenMaterials    || []}
-            onToggleHidden={v     => toggleHidden('hiddenMaterials', v)}
-            onDeleteBuiltIn={v    => deleteBuiltIn('deletedMaterials', 'hiddenMaterials', v)}
+            builtIn={activeScrewMats}
+            custom={settings.customMaterials      || []}
+            hidden={settings.hiddenScrewMaterials  || []}
+            onToggleHidden={v     => toggleHidden('hiddenScrewMaterials', v)}
+            onDeleteBuiltIn={v    => deleteBuiltIn('deletedScrewMaterials', 'hiddenScrewMaterials', v)}
             onDeleteCustom={v     => deleteCustom('customMaterials', v)}
             onAddCustom={v        => addCustom('customMaterials', v)}
-            onBatchHide={items          => batchHide('hiddenMaterials', items)}
-            onBatchShow={items          => batchShow('hiddenMaterials', items)}
-            onBatchDeleteBuiltIn={items => batchDeleteBuiltIn('deletedMaterials', 'hiddenMaterials', items)}
+            onBatchHide={items          => batchHide('hiddenScrewMaterials', items)}
+            onBatchShow={items          => batchShow('hiddenScrewMaterials', items)}
+            onBatchDeleteBuiltIn={items => batchDeleteBuiltIn('deletedScrewMaterials', 'hiddenScrewMaterials', items)}
             onBatchDeleteCustom={items  => batchDeleteCustom('customMaterials', items)}
           />
         </SettingSection>
