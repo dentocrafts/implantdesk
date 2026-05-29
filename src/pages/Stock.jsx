@@ -23,7 +23,7 @@ import CopyableCode from '@/components/common/CopyableCode';
 import EmptyState from '@/components/common/EmptyState';
 import { useAllComponents } from '@/hooks/useComponents';
 import { useAllStockMovements, useLogStockMovement, useLogBatchStockMovements } from '@/hooks/useStock';
-import { formatCurrency, getStockStatus, getSystemStyle, cn } from '@/lib/utils';
+import { formatCurrency, getStockStatus, getSystemStyle, cn, toTitleCase } from '@/lib/utils';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -172,11 +172,14 @@ function StockDialog({ component, type, open, onClose }) {
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1.5">
                   <Label htmlFor="dlg-doctor">Doctor Name</Label>
-                  <Input id="dlg-doctor" value={doctorName} onChange={e => setDoctorName(e.target.value)} placeholder="Dr. Smith" />
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-sm font-medium text-muted-foreground pointer-events-none select-none">Dr.</span>
+                    <Input id="dlg-doctor" value={doctorName} onChange={e => setDoctorName(toTitleCase(e.target.value))} placeholder="Smith" className="pl-9" />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="dlg-patient">Patient Name</Label>
-                  <Input id="dlg-patient" value={patientName} onChange={e => setPatientName(e.target.value)} placeholder="John Doe" />
+                  <Input id="dlg-patient" value={patientName} onChange={e => setPatientName(toTitleCase(e.target.value))} placeholder="John Doe" />
                 </div>
               </div>
               {/* Collapsible extra notes */}

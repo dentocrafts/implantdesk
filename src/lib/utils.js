@@ -1,6 +1,10 @@
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+/** Capitalises the first letter of every word as the user types. */
+export const toTitleCase = v =>
+  v.replace(/(^|\s)\S/g, c => c.toUpperCase());
+
 export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }

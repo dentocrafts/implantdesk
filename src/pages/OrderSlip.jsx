@@ -16,7 +16,7 @@ import { useDispatchStock } from '@/hooks/useStock';
 import { useDispatchNote } from '@/context/DispatchContext';
 import { useSettings } from '@/context/SettingsContext';
 import { usePermissions } from '@/hooks/usePermissions';
-import { getSystemStyle, cn, formatCurrency, getStockStatus, copyToClipboard } from '@/lib/utils';
+import { getSystemStyle, cn, formatCurrency, getStockStatus, copyToClipboard, toTitleCase } from '@/lib/utils';
 import { toast } from 'sonner';
 
 function SlipNumber() {
@@ -368,7 +368,7 @@ export default function OrderSlip() {
     const wf = settings.waFields ?? {};
     const lines = [];
     if (wf.caseId      !== false)                              lines.push(`*Case ID:* ${caseId || '—'}`);
-    if (wf.doctorName  !== false && doctorName.trim())        lines.push(`*Doctor:* ${doctorName.trim()}`);
+    if (wf.doctorName  !== false && doctorName.trim())        lines.push(`*Doctor:* Dr. ${doctorName.trim()}`);
     if (wf.patientName !== false && patientName.trim())       lines.push(`*Patient:* ${patientName.trim()}`);
     if (wf.notes       !== false && notes.trim())             lines.push(`*Notes:* ${notes.trim()}`);
     lines.push('');
@@ -533,11 +533,14 @@ export default function OrderSlip() {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1.5">
                     <Label>Doctor Name</Label>
-                    <Input value={doctorName} onChange={e => setDoctorName(e.target.value)} placeholder="Dr. Smith" />
+                    <div className="relative flex items-center">
+                      <span className="absolute left-3 text-sm font-medium text-muted-foreground pointer-events-none select-none">Dr.</span>
+                      <Input value={doctorName} onChange={e => setDoctorName(toTitleCase(e.target.value))} placeholder="Smith" className="pl-9" />
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label>Patient Name</Label>
-                    <Input value={patientName} onChange={e => setPatientName(e.target.value)} placeholder="John Doe" />
+                    <Input value={patientName} onChange={e => setPatientName(toTitleCase(e.target.value))} placeholder="John Doe" />
                   </div>
                 </div>
                 {/* Notes — collapsed by default */}
@@ -690,7 +693,7 @@ export default function OrderSlip() {
             {(caseId || doctorName || patientName) && (
               <div className="text-sm space-y-0.5">
                 {caseId      && <p><span className="text-muted-foreground">Case:</span>    <strong>{caseId}</strong></p>}
-                {doctorName  && <p><span className="text-muted-foreground">Doctor:</span>  <strong>{doctorName}</strong></p>}
+                {doctorName  && <p><span className="text-muted-foreground">Doctor:</span>  <strong>Dr. {doctorName}</strong></p>}
                 {patientName && <p><span className="text-muted-foreground">Patient:</span> <strong>{patientName}</strong></p>}
               </div>
             )}
@@ -798,7 +801,7 @@ export default function OrderSlip() {
             {doctorName && (
               <div>
                 <div style={{ fontSize: '10px', textTransform: 'uppercase', color: '#16a34a', fontWeight: '600', letterSpacing: '0.5px', marginBottom: '2px' }}>Doctor</div>
-                <div style={{ fontSize: '14px', fontWeight: '600' }}>{doctorName}</div>
+                <div style={{ fontSize: '14px', fontWeight: '600' }}>Dr. {doctorName}</div>
               </div>
             )}
             {patientName && (

@@ -234,7 +234,7 @@ function MovementDetailDialog({ movement: m, open, onClose }) {
                 )}
                 {parsed.doctor  && (
                   <DetailRow icon={Stethoscope} label="Doctor">
-                    <span>{parsed.doctor}</span>
+                    <span>Dr. {parsed.doctor}</span>
                   </DetailRow>
                 )}
                 {parsed.patient && (
