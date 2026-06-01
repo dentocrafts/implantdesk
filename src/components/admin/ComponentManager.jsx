@@ -254,7 +254,7 @@ export default function ComponentManager() {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-4">
+    <div className={cn('space-y-4', selectedCount > 0 && 'pb-20')}>
 
       {/* Sticky: category tabs + toolbar */}
       <div className="sticky top-28 z-10 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 pt-3 pb-3 bg-background/95 backdrop-blur-sm border-b border-border space-y-2">
