@@ -301,37 +301,39 @@ export default function ComponentManager() {
         </div>
       </div>
 
-      {/* Batch action bar */}
+      {/* Batch action bar — fixed at bottom so it's always visible when scrolled */}
       {selectedCount > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2">
-          <div className="flex items-center gap-1.5 mr-auto">
-            <span className="text-sm font-medium">
-              {selectedCount} {noun}{selectedCount > 1 ? 's' : ''} selected
-            </span>
-            <button
-              onClick={clearSelection}
-              className="rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
-              title="Clear selection"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm shadow-[0_-4px_16px_rgba(0,0,0,0.08)] print:hidden">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 mr-auto">
+              <span className="text-sm font-medium">
+                {selectedCount} {noun}{selectedCount > 1 ? 's' : ''} selected
+              </span>
+              <button
+                onClick={clearSelection}
+                className="rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+                title="Clear selection"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchActivate}   disabled={batchBusy}>
+              <ToggleRight className="h-3.5 w-3.5 text-primary" />
+              Activate
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchDeactivate} disabled={batchBusy}>
+              <ToggleLeft className="h-3.5 w-3.5 text-muted-foreground" />
+              Deactivate
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchExport}     disabled={batchBusy}>
+              <Download className="h-3.5 w-3.5" />
+              Export CSV
+            </Button>
+            <Button variant="destructive" size="sm" className="gap-1.5 h-8" onClick={handleBatchDelete} disabled={batchBusy}>
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </Button>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchActivate}   disabled={batchBusy}>
-            <ToggleRight className="h-3.5 w-3.5 text-primary" />
-            Activate
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchDeactivate} disabled={batchBusy}>
-            <ToggleLeft className="h-3.5 w-3.5 text-muted-foreground" />
-            Deactivate
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleBatchExport}     disabled={batchBusy}>
-            <Download className="h-3.5 w-3.5" />
-            Export CSV
-          </Button>
-          <Button variant="destructive" size="sm" className="gap-1.5 h-8" onClick={handleBatchDelete} disabled={batchBusy}>
-            <Trash2 className="h-3.5 w-3.5" />
-            Delete
-          </Button>
         </div>
       )}
 
