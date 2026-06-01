@@ -180,10 +180,12 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
     },
   });
 
-  // Controlled values for the three selects
-  const watchedSystem  = watch('system');
-  const watchedType    = watch('abutment_type');
-  const watchedMat     = watch('material');
+  // Controlled values for the three selects — use local state so that
+  // newly added custom options and the selected value update in the same
+  // React render pass (avoids a blank select after "+ Add new…")
+  const [selectedSystem, setSelectedSystem] = useState(component?.system        || '');
+  const [selectedType,   setSelectedType]   = useState(component?.abutment_type || '');
+  const [selectedMat,    setSelectedMat]    = useState(component?.material      || '');
 
   // Hidden + deleted lists from settings
   const hiddenSys    = settings.hiddenSystems       || [];
@@ -245,17 +247,20 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
   function handleAddNew(field, newVal) {
     if (field === 'system') {
       updateSettings({ customSystems: uniq([...(settings.customSystems || []), newVal]) });
-      setValue('system', newVal);
+      setSelectedSystem(newVal);
+      setValue('system', newVal, { shouldDirty: true });
     } else if (field === 'abutmentType') {
       if (isScrew) {
         updateSettings({ customScrewTypes: uniq([...(settings.customScrewTypes || []), newVal]) });
       } else {
         updateSettings({ customAbutmentTypes: uniq([...(settings.customAbutmentTypes || []), newVal]) });
       }
-      setValue('abutment_type', newVal);
+      setSelectedType(newVal);
+      setValue('abutment_type', newVal, { shouldDirty: true });
     } else if (field === 'material') {
       updateSettings({ customMaterials: uniq([...(settings.customMaterials || []), newVal]) });
-      setValue('material', newVal);
+      setSelectedMat(newVal);
+      setValue('material', newVal, { shouldDirty: true });
     }
     setAddingField(null);
   }
@@ -287,10 +292,11 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
           <div className="space-y-1.5">
             <Label>Implant System *</Label>
             <Select
-              value={watchedSystem}
+              value={selectedSystem}
               onValueChange={v => {
                 if (v === ADD_NEW) { setAddingField('system'); return; }
-                setValue('system', v);
+                setSelectedSystem(v);
+                setValue('system', v, { shouldDirty: true });
               }}
             >
               <SelectTrigger>
@@ -309,10 +315,11 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
           <div className="space-y-1.5">
             <Label>{isScrew ? 'Screw Type' : 'Abutment Type'} *</Label>
             <Select
-              value={watchedType}
+              value={selectedType}
               onValueChange={v => {
                 if (v === ADD_NEW) { setAddingField('abutmentType'); return; }
-                setValue('abutment_type', v);
+                setSelectedType(v);
+                setValue('abutment_type', v, { shouldDirty: true });
               }}
             >
               <SelectTrigger>
@@ -331,10 +338,11 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
           <div className="space-y-1.5">
             <Label>Material *</Label>
             <Select
-              value={watchedMat}
+              value={selectedMat}
               onValueChange={v => {
                 if (v === ADD_NEW) { setAddingField('material'); return; }
-                setValue('material', v);
+                setSelectedMat(v);
+                setValue('material', v, { shouldDirty: true });
               }}
             >
               <SelectTrigger>
