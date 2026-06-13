@@ -78,7 +78,7 @@ export default function ComponentCard({ component, onViewDetail }) {
           </Badge>
           <span className={cn(
             'inline-flex items-center rounded-full px-1.5 py-0 h-5 text-[10px] font-bold uppercase',
-            (component.stock_type || 'sale') === 'loan'
+            (component.stock_type || 'sale') === 'returnable'
               ? 'bg-amber-100 text-amber-700 border border-amber-300'
               : 'bg-blue-100 text-blue-700 border border-blue-300'
           )}>

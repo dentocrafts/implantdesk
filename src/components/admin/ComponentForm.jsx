@@ -413,7 +413,7 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
           <div className="sm:col-span-2 space-y-1.5">
             <Label>Stock Type</Label>
             <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
-              {[{ value: 'sale', label: 'Sale' }, { value: 'loan', label: 'Loan' }].map(opt => (
+              {[{ value: 'sale', label: 'Sale' }, { value: 'returnable', label: 'Returnable' }].map(opt => (
                 <button
                   key={opt.value}
                   type="button"

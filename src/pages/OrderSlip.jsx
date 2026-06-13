@@ -716,7 +716,7 @@ export default function OrderSlip() {
                             </div>
                             {/* Per-item stock type toggle */}
                             <div className="flex gap-0.5 mt-1">
-                              {['sale', 'loan'].map(t => (
+                              {['sale', 'returnable'].map(t => (
                                 <button
                                   key={t}
                                   type="button"
@@ -724,7 +724,7 @@ export default function OrderSlip() {
                                   className={cn(
                                     'px-1.5 py-0 rounded text-[9px] font-bold uppercase leading-4 transition-colors',
                                     (item.stock_type || 'sale') === t
-                                      ? t === 'loan'
+                                      ? t === 'returnable'
                                         ? 'bg-amber-100 text-amber-700 border border-amber-300'
                                         : 'bg-blue-100 text-blue-700 border border-blue-300'
                                       : 'bg-muted text-muted-foreground border border-transparent hover:border-border'
@@ -783,7 +783,7 @@ export default function OrderSlip() {
                   <span className="font-medium line-clamp-1 flex-1 min-w-0">{item.name}</span>
                   <span className={cn(
                     'shrink-0 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded',
-                    (item.stock_type || 'sale') === 'loan'
+                    (item.stock_type || 'sale') === 'returnable'
                       ? 'bg-amber-100 text-amber-700'
                       : 'bg-blue-100 text-blue-700'
                   )}>

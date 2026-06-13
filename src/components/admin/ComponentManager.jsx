@@ -431,7 +431,7 @@ export default function ComponentManager() {
                           </Badge>
                           <span className={cn(
                             'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
-                            (c.stock_type || 'sale') === 'loan'
+                            (c.stock_type || 'sale') === 'returnable'
                               ? 'bg-amber-100 text-amber-700 border border-amber-300'
                               : 'bg-blue-100 text-blue-700 border border-blue-300'
                           )}>
