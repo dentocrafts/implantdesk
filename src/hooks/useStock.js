@@ -86,6 +86,7 @@ export function useDispatchStock() {
         type:         'out',
         quantity:     item.qty,
         notes:        noteText,
+        stock_type:   item.stock_type || 'sale',
         created_by:   user.id,
       }));
 

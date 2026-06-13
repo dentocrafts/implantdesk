@@ -425,9 +425,19 @@ export default function ComponentManager() {
                         />
                       </TableCell>
                       <TableCell>
-                        <Badge variant={c.is_active ? 'success' : 'secondary'} className="text-xs">
-                          {c.is_active ? 'Active' : 'Hidden'}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1">
+                          <Badge variant={c.is_active ? 'success' : 'secondary'} className="text-xs">
+                            {c.is_active ? 'Active' : 'Hidden'}
+                          </Badge>
+                          <span className={cn(
+                            'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
+                            (c.stock_type || 'sale') === 'loan'
+                              ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                              : 'bg-blue-100 text-blue-700 border border-blue-300'
+                          )}>
+                            {c.stock_type || 'sale'}
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">

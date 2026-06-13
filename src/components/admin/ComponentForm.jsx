@@ -157,6 +157,7 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
 
   const [uploading, setUploading]     = useState(false);
   const [isActive, setIsActive]       = useState(component?.is_active ?? true);
+  const [stockType, setStockType]     = useState(component?.stock_type || 'sale');
   const [addingField, setAddingField] = useState(null); // 'system' | 'abutmentType' | 'material'
 
   // Image base URL + focal point (encoded in the #pos= fragment on save)
@@ -235,6 +236,7 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
         stock_qty:          Number(values.stock_qty),
         image_url:          encodeImagePos(imageBase, focalX, focalY) || null,
         is_active:          isActive,
+        stock_type:         stockType,
       };
       await onSave(payload);
     } catch (err) {
@@ -405,6 +407,27 @@ export default function ComponentForm({ component, onSave, onCancel, category = 
           <div className="space-y-1.5">
             <Label htmlFor="stock">Stock Qty *</Label>
             <Input id="stock" type="number" {...register('stock_qty', { required: true })} />
+          </div>
+
+          {/* Stock Type */}
+          <div className="sm:col-span-2 space-y-1.5">
+            <Label>Stock Type</Label>
+            <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+              {[{ value: 'sale', label: 'Sale' }, { value: 'loan', label: 'Loan' }].map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setStockType(opt.value)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
+                    stockType === opt.value
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Description */}

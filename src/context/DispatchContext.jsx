@@ -26,6 +26,10 @@ export function DispatchProvider({ children }) {
     setItems(prev => prev.map(i => i.id === id ? { ...i, qty } : i));
   }
 
+  function updateItemStockType(id, stockType) {
+    setItems(prev => prev.map(i => i.id === id ? { ...i, stock_type: stockType } : i));
+  }
+
   function clearDispatch() {
     setCaseId('');
     setDoctorName('');
@@ -42,7 +46,7 @@ export function DispatchProvider({ children }) {
       doctorName,  setDoctorName,
       patientName, setPatientName,
       notes,       setNotes,
-      items, addItem, removeItem, updateQty, clearDispatch,
+      items, addItem, removeItem, updateQty, updateItemStockType, clearDispatch,
       totalItems,
     }}>
       {children}
