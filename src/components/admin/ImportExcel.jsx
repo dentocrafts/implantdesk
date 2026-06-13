@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -91,6 +91,15 @@ export default function ImportExcel({ open, onClose, category = 'component' }) {
 
   const noun     = category === 'screw' ? 'Screw' : 'Component';
   const nounPlur = category === 'screw' ? 'Screws' : 'Components';
+
+  function downloadTemplate() {
+    const headers = EXPECTED_FIELDS.map(f => f.label);
+    headers.push('Stock Type');
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, noun + 's');
+    XLSX.writeFile(wb, `implantdesk-${noun.toLowerCase()}s-template.xlsx`);
+  }
 
   function reset() {
     setStep('upload');
@@ -196,6 +205,13 @@ export default function ImportExcel({ open, onClose, category = 'component' }) {
               <p className="font-medium mb-1">Click to upload your Excel file</p>
               <p className="text-sm text-muted-foreground">.xlsx files only</p>
               <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} />
+            </div>
+
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={downloadTemplate}>
+                <Download className="h-3.5 w-3.5" />
+                Download Template
+              </Button>
             </div>
 
             {/* Expected column guide */}
