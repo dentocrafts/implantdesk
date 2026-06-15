@@ -51,20 +51,28 @@ const EXPECTED_FIELDS = [
 function guessMapping(headers) {
   const lower = headers.map(h => h?.toString().toLowerCase().trim());
   const mapping = {};
-  EXPECTED_FIELDS.forEach(({ key }) => {
+  EXPECTED_FIELDS.forEach(({ key, label }) => {
     const aliases = {
       name:               ['name', 'component name', 'product name', 'title'],
       system:             ['system', 'brand', 'implant system', 'manufacturer'],
-      abutment_type:      ['abutment type', 'abutment', 'screw type', 'type'],
-      gingival_height_mm: ['gingival height', 'gh', 'gingival height (mm)', 'gh (mm)', 'gingival', 'length', 'length (mm)'],
-      platform_diameter:  ['platform diameter', 'diameter', 'platform', 'platform (mm)', 'pd'],
+      abutment_type:      ['abutment / screw type', 'abutment type', 'abutment', 'screw type', 'type'],
+      gingival_height_mm: ['gingival height (mm)', 'gingival height', 'gh (mm)', 'gh', 'gingival', 'length (mm)', 'length'],
+      platform_diameter:  ['platform diameter (mm)', 'platform diameter', 'diameter', 'platform', 'platform (mm)', 'pd'],
       material:           ['material', 'materials'],
       component_code:     ['component code', 'sku', 'code', 'internal code', 'item code', 'part no', 'part number'],
-      price:              ['price', 'unit price', 'price (inr)', 'mrp', 'cost'],
-      stock_qty:          ['stock', 'qty', 'quantity', 'stock qty', 'available', 'inventory'],
+      price:              ['price (inr)', 'price', 'unit price', 'mrp', 'cost'],
+      stock_qty:          ['stock qty', 'stock', 'qty', 'quantity', 'available', 'inventory'],
       description:        ['description', 'notes', 'details', 'remarks'],
     };
-    const found = lower.findIndex(h => aliases[key]?.includes(h));
+    // 1. Exact alias match
+    let found = lower.findIndex(h => aliases[key]?.includes(h));
+    // 2. Fallback: the field's own label (lowercased) matches the header exactly
+    if (found < 0) found = lower.findIndex(h => h === label.toLowerCase());
+    // 3. Fallback: header contains the label as a substring (or vice versa)
+    if (found < 0) {
+      const lbl = label.toLowerCase();
+      found = lower.findIndex(h => h.includes(lbl) || lbl.includes(h));
+    }
     if (found >= 0) mapping[key] = headers[found];
   });
   return mapping;
