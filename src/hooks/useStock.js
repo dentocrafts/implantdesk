@@ -34,6 +34,19 @@ export function useAllStockMovements() {
   });
 }
 
+export function useDeleteAllStockMovements() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('stock_movements').delete().not('id', 'is', null);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['stock_movements'] });
+    },
+  });
+}
+
 export function useLogBatchStockMovements() {
   const qc = useQueryClient();
   const { user } = useAuth();
