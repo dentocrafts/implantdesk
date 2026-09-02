@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { History, Search, Truck, ArrowUpRight, Undo2, PackagePlus, X, Download, Calendar, Clock, Hash, FileText, User, Stethoscope } from 'lucide-react';
+import { History, Search, Truck, ArrowUpRight, Undo2, PackagePlus, X, Download, Calendar, Clock, Hash, FileText, User, Stethoscope, Trash2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import CopyableCode from '@/components/common/CopyableCode';
 import EmptyState from '@/components/common/EmptyState';
-import { useAllStockMovements } from '@/hooks/useStock';
+import { useAllStockMovements, useDeleteAllStockMovements } from '@/hooks/useStock';
 import { getSystemStyle, cn } from '@/lib/utils';
 import { useSettings } from '@/context/SettingsContext';
+import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
 
@@ -263,9 +264,12 @@ export default function HistoryPage() {
   const { data: movements, isLoading } = useAllStockMovements();
   const { settings } = useSettings();
   const { canViewHistory } = usePermissions();
+  const { isAdmin } = useAuth();
+  const deleteAllMutation = useDeleteAllStockMovements();
   const [search,            setSearch]           = useState('');
   const [typeFilter,        setTypeFilter]       = useState('all');
   const [selectedMovement,  setSelectedMovement] = useState(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   // #16 date range filter
   const [dateFrom,          setDateFrom]         = useState('');
   const [dateTo,            setDateTo]           = useState('');
@@ -335,6 +339,12 @@ export default function HistoryPage() {
     URL.revokeObjectURL(url);
   }
 
+  function handleDeleteHistory() {
+    deleteAllMutation.mutate(undefined, {
+      onSuccess: () => setConfirmDeleteOpen(false),
+    });
+  }
+
   if (!canViewHistory) {
     return (
       <Layout>
@@ -381,6 +391,18 @@ export default function HistoryPage() {
                 <Download className="h-3.5 w-3.5" />
                 Export CSV
               </Button>
+              {isAdmin && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-1.5 h-8"
+                  onClick={() => setConfirmDeleteOpen(true)}
+                  disabled={!movements?.length}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete History
+                </Button>
+              )}
             </div>
           </div>
 
@@ -613,6 +635,32 @@ export default function HistoryPage() {
         open={!!selectedMovement}
         onClose={() => setSelectedMovement(null)}
       />
+
+      {/* Delete history confirmation */}
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete all history?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This permanently deletes all {movements?.length ?? 0} movement record{movements?.length !== 1 ? 's' : ''}.
+            Current stock quantities are not affected. This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" size="sm" onClick={() => setConfirmDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteHistory}
+              disabled={deleteAllMutation.isPending}
+            >
+              {deleteAllMutation.isPending ? 'Deleting…' : 'Delete All'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
