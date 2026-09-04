@@ -316,10 +316,12 @@ function MovementDetailDialog({ movement: m, open, onClose }) {
                 </p>
                 <Input
                   type="password"
+                  name="delete-confirm-phrase"
                   value={password}
                   onChange={e => { setPassword(e.target.value); setPasswordError(false); }}
                   placeholder="Password"
                   className="h-8 text-sm"
+                  autoComplete="off"
                   autoFocus
                 />
                 {passwordError && (
