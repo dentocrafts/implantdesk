@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { History, Search, Truck, ArrowUpRight, Undo2, PackagePlus, X, Download, Calendar, Clock, Hash, FileText, User, Stethoscope, Trash2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Separator } from '@/components/ui/separator';
 import CopyableCode from '@/components/common/CopyableCode';
 import EmptyState from '@/components/common/EmptyState';
-import { useAllStockMovements, useDeleteAllStockMovements } from '@/hooks/useStock';
+import { useAllStockMovements, useDeleteStockMovement } from '@/hooks/useStock';
 import { getSystemStyle, cn } from '@/lib/utils';
 import { useSettings } from '@/context/SettingsContext';
 import { useAuth } from '@/context/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
+
+// Confirmation password required before an individual movement can be deleted.
+const DELETE_PASSWORD = 'Sc00byd00!';
 
 // ── Detect / parse dispatch movements ────────────────────────────────
 function isDispatch(m) {
@@ -128,6 +131,20 @@ const FILTERS = [
 // ── Detail dialog ─────────────────────────────────────────────────────
 function MovementDetailDialog({ movement: m, open, onClose }) {
   const { settings } = useSettings();
+  const { isAdmin } = useAuth();
+  const deleteMutation = useDeleteStockMovement();
+  const [deleteStep, setDeleteStep] = useState('idle'); // 'idle' | 'password'
+  const [password, setPassword] = useState('');
+  const [passwordError, setPasswordError] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setDeleteStep('idle');
+      setPassword('');
+      setPasswordError(false);
+    }
+  }, [open, m?.id]);
+
   if (!m) return null;
 
   const disp = isDispatch(m);
@@ -150,6 +167,26 @@ function MovementDetailDialog({ movement: m, open, onClose }) {
         </div>
       </div>
     );
+  }
+
+  function startDelete() {
+    setDeleteStep('password');
+    setPassword('');
+    setPasswordError(false);
+  }
+
+  function cancelDelete() {
+    setDeleteStep('idle');
+    setPassword('');
+    setPasswordError(false);
+  }
+
+  function confirmDelete() {
+    if (password !== DELETE_PASSWORD) {
+      setPasswordError(true);
+      return;
+    }
+    deleteMutation.mutate(m, { onSuccess: onClose });
   }
 
   return (
@@ -254,22 +291,69 @@ function MovementDetailDialog({ movement: m, open, onClose }) {
           })()}
 
         </div>
+
+        {/* Delete this entry (admin only) */}
+        {isAdmin && (
+          <>
+            <Separator />
+            {deleteStep === 'idle' ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                onClick={startDelete}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete this entry
+              </Button>
+            ) : (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  Enter the password to permanently delete this entry.
+                  {!cfg.noStockImpact && (
+                    <> Stock will be {m.type === 'out' ? 'increased' : 'decreased'} by {m.quantity} unit{m.quantity !== 1 ? 's' : ''} to reverse this movement.</>
+                  )}
+                </p>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setPasswordError(false); }}
+                  placeholder="Password"
+                  className="h-8 text-sm"
+                  autoFocus
+                />
+                {passwordError && (
+                  <p className="text-xs text-destructive">Incorrect password.</p>
+                )}
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button variant="outline" size="sm" onClick={cancelDelete}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={confirmDelete}
+                    disabled={deleteMutation.isPending}
+                  >
+                    {deleteMutation.isPending ? 'Deleting…' : 'Confirm Delete'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
-
 // ── Page ──────────────────────────────────────────────────────────────
 export default function HistoryPage() {
   const { data: movements, isLoading } = useAllStockMovements();
   const { settings } = useSettings();
   const { canViewHistory } = usePermissions();
-  const { isAdmin } = useAuth();
-  const deleteAllMutation = useDeleteAllStockMovements();
   const [search,            setSearch]           = useState('');
   const [typeFilter,        setTypeFilter]       = useState('all');
   const [selectedMovement,  setSelectedMovement] = useState(null);
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   // #16 date range filter
   const [dateFrom,          setDateFrom]         = useState('');
   const [dateTo,            setDateTo]           = useState('');
@@ -339,12 +423,6 @@ export default function HistoryPage() {
     URL.revokeObjectURL(url);
   }
 
-  function handleDeleteHistory() {
-    deleteAllMutation.mutate(undefined, {
-      onSuccess: () => setConfirmDeleteOpen(false),
-    });
-  }
-
   if (!canViewHistory) {
     return (
       <Layout>
@@ -391,18 +469,6 @@ export default function HistoryPage() {
                 <Download className="h-3.5 w-3.5" />
                 Export CSV
               </Button>
-              {isAdmin && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-1.5 h-8"
-                  onClick={() => setConfirmDeleteOpen(true)}
-                  disabled={!movements?.length}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete History
-                </Button>
-              )}
             </div>
           </div>
 
@@ -549,7 +615,6 @@ export default function HistoryPage() {
                               </span>
                             )}
                           </div>
-
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <CopyableCode code={m.implant_components?.component_code} className="text-[10px]" />
 
@@ -635,32 +700,6 @@ export default function HistoryPage() {
         open={!!selectedMovement}
         onClose={() => setSelectedMovement(null)}
       />
-
-      {/* Delete history confirmation */}
-      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Delete all history?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This permanently deletes all {movements?.length ?? 0} movement record{movements?.length !== 1 ? 's' : ''}.
-            Current stock quantities are not affected. This cannot be undone.
-          </p>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setConfirmDeleteOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDeleteHistory}
-              disabled={deleteAllMutation.isPending}
-            >
-              {deleteAllMutation.isPending ? 'Deleting…' : 'Delete All'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </Layout>
   );
 }
