@@ -34,15 +34,42 @@ export function useAllStockMovements() {
   });
 }
 
-export function useDeleteAllStockMovements() {
+/**
+ * Deletes a single stock movement and reverses its effect on stock_qty.
+ * out      → stock was decreased, so deleting adds the quantity back
+ * in       → stock was increased, so deleting subtracts the quantity
+ * received → order log only, no stock_qty change either way
+ */
+export function useDeleteStockMovement() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from('stock_movements').delete().not('id', 'is', null);
-      if (error) throw error;
+    mutationFn: async (movement) => {
+      const { error: delError } = await supabase
+        .from('stock_movements')
+        .delete()
+        .eq('id', movement.id);
+      if (delError) throw delError;
+
+      if (movement.type !== 'received') {
+        const { data: component, error: fetchError } = await supabase
+          .from('implant_components')
+          .select('stock_qty')
+          .eq('id', movement.component_id)
+          .single();
+        if (fetchError) throw fetchError;
+
+        const delta = movement.type === 'out' ? movement.quantity : -movement.quantity;
+        const new_stock = Math.max(0, component.stock_qty + delta);
+        const { error: updateError } = await supabase
+          .from('implant_components')
+          .update({ stock_qty: new_stock })
+          .eq('id', movement.component_id);
+        if (updateError) throw updateError;
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['stock_movements'] });
+      qc.invalidateQueries({ queryKey: ['components'] });
     },
   });
 }
